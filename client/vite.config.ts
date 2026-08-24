@@ -3,8 +3,8 @@ import { defineConfig } from 'vite';
 import tailwindcss from '@tailwindcss/vite';
 
 // 常量(扩展名分组/大正则)与工具函数(public 静态检测)分别独立，keep vite.config.ts 干净
-import { ASSET_EXT_RE } from './vite.constants.ts';
-import { publicFileExists } from './vite.utils.ts';
+// import { ASSET_EXT_RE } from './vite.constants.ts';
+// import { publicFileExists } from './vite.utils.ts';
 
 // env 驱动端口：VITE_PORT(前端默认5173)、BACKEND_PORT(代理目标/后端默认3006)
 const vitePort = Number(process.env.VITE_PORT) || 5173;
@@ -26,33 +26,42 @@ export default defineConfig({
     server: {
         port: vitePort,
         proxy: {
-            '/': {
-                target: `http://localhost:${backendPort}`,
-                changeOrigin: true,
-                // 属于 Vite 的模块资源：返回原 url 字符串 → 交由 Vite transform / HMR
-                // 其余 SSR 页面路由：返回 undefined → 转发到 Express 后端
-                bypass(req) {
-                    const url = (req.url ?? '').split('?')[0];
-                    console.log(`[vite.proxy.bypass] reqId=${++reqId} url=${url}`);
-                    // Vite 应处理的路径判定（前缀 / 扩展名 / 存在的 public 静态文件）：
-                    //   - 前缀：Vite 虚拟模块(@vite/@fs/@id…)、依赖预构建、前端源码树
-                    //   - 扩展名：源码及其 import 引用的同目录资源（图片/字体/map/worker…）
-                    //   - public/ 静态资源：内容以根路径暴露，fs 存在则交给 Vite
-                    // 其余（SSR 页面路由 /、/list、/todos、/api/*…）代理给 Express 后端
-                    const isVitePath =
-                        url.startsWith('/@vite') ||
-                        url.startsWith('/@fs/') ||
-                        url.startsWith('/@id/') ||
-                        url.startsWith('/@react-refresh') ||
-                        url.startsWith('/node_modules/') ||
-                        url.startsWith('/client/src/') ||
-                        ASSET_EXT_RE.test(url);
-                    const isPublicAsset = !isVitePath && url !== '/' && publicFileExists(url);
-                    if (isVitePath || isPublicAsset) return url; // 交给 Vite
-                    if (!url.startsWith('/page')) return url;  // 交给 Vite
-                    return undefined; // 代理给 Express SSR 后端
-                },
-            },
+            // '/': {
+            //     target: `http://localhost:${backendPort}`,
+            //     changeOrigin: true,
+            //     // 属于 Vite 的模块资源：返回原 url 字符串 → 交由 Vite transform / HMR
+            //     // 其余 SSR 页面路由：返回 undefined → 转发到 Express 后端
+            //     bypass(req) {
+            //         const url = (req.url ?? '').split('?')[0];
+            //         console.log(`[vite.proxy.bypass] reqId=${++reqId} url=${url}`);
+            //         // Vite 应处理的路径判定（前缀 / 扩展名 / 存在的 public 静态文件）：
+            //         //   - 前缀：Vite 虚拟模块(@vite/@fs/@id…)、依赖预构建、前端源码树
+            //         //   - 扩展名：源码及其 import 引用的同目录资源（图片/字体/map/worker…）
+            //         //   - public/ 静态资源：内容以根路径暴露，fs 存在则交给 Vite
+            //         // 其余（SSR 页面路由 /、/list、/todos、/api/*…）代理给 Express 后端
+
+
+            //         const isVitePath =
+            //             url.startsWith('/@vite') ||
+            //             url.startsWith('/@fs/') ||
+            //             url.startsWith('/@id/') ||
+            //             url.startsWith('/@react-refresh') ||
+            //             url.startsWith('/node_modules/') ||
+            //             url.startsWith('/client/src/') ||
+            //             ASSET_EXT_RE.test(url);
+            //         const isPublicAsset = !isVitePath && url !== '/' && publicFileExists(url);
+            //         if (isVitePath || isPublicAsset) return url; // 交给 Vite
+
+            //         // 目前 只提供 /page/*、/api/* 代理给后端，其他全部交给 Vite, 上面的先注释
+            //         if (url.startsWith('/api') || url.startsWith('/page')) { // 交给 Express SSR 后端
+            //             // /api/* /page/* 由后端处理，返回 undefined → 代理到后端
+            //             return undefined;
+            //         }
+            //         return url; // 交给 Vite
+            //     },
+            // },
+            '/api': { target: `http://localhost:${backendPort}`, changeOrigin: true },
+            '/page': { target: `http://localhost:${backendPort}`, changeOrigin: true },
         },
     },
     build: {

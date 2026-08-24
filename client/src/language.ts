@@ -1,6 +1,7 @@
 import htmx from 'htmx.org';
 import { showToast, ToastVariant } from './toast';
 import { t } from './i18n';
+import { PAGE_PREFIX, API_PREFIX } from './constants';
 
 /**
  * 自定义语言切换下拉菜单。
@@ -92,7 +93,7 @@ function initLanguageSwitcher(): void {
 async function switchLanguage(lang: string): Promise<void> {
     // 1. POST 设 cookie，并拿回 { i18nJson, isSuccess }
     try {
-        const res = await fetch('/change-language', {
+        const res = await fetch(`${API_PREFIX}/change-language`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ lang }),
@@ -111,9 +112,10 @@ async function switchLanguage(lang: string): Promise<void> {
 
     // 2. GET /body 拿新语言的纯片段（app-layout 层），整块换进 #root。
     //    带当前 path，让服务端按当前路由重绘对应页面内容（多页面支持）。
+    //    PAGE_META 的 key 带 PAGE_PREFIX 前缀，故这里拼上它再 encodeURIComponent。
     //    await htmx.ajax() 表示「该请求的 DOM swap 已完成」，所以紧跟着的 DOM 操作 / 重绑都可靠；本方案无需额外监听 afterSwap。
-    const path = encodeURIComponent(location.pathname);
-    const getBodyRes = await htmx.ajax('get', `/body?path=${path}`, {
+    const path = encodeURIComponent(`${PAGE_PREFIX}${location.pathname}`);
+    const getBodyRes = await htmx.ajax('get', `${PAGE_PREFIX}/body?path=${path}`, {
         target: '#root',
         swap: 'innerHTML', // 整个 #root 替换
     });

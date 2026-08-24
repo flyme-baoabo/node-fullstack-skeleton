@@ -1,9 +1,10 @@
 // import htmx from 'htmx.org';
 // import './mountHtmxLifecycle';
+import { PAGE_PREFIX } from './constants';
 
 
 /**
- * 轻量 SPA 路由：把 `#root` 内容换成 Express 的 `/page/path` fragment。
+ * 轻量 SPA 路由：把 `#root` 内容换成 Express 的 `${PAGE_PREFIX}/path` fragment。
  * 职责：
  *  1. 初始加载当前路径
  *  2. 点击同源 `<a>` → pushState → 加载对应页面（SPA 导航）
@@ -17,11 +18,11 @@ window.addEventListener('DOMContentLoaded', async () => {
     const ROOT_SELECTOR = '#root';
 
     async function loadPageByPath(path: string = window.location.pathname) {
-        const res = await htmx.ajax('get', `/page${path}`, {
+        const res = await htmx.ajax('get', `${PAGE_PREFIX}${path}`, {
             swap: 'innerHTML',
             target: ROOT_SELECTOR,
         });
-        console.log('[router] htmx.ajax get', `/page${path}`, res);
+        console.log('[router] htmx.ajax get', `${PAGE_PREFIX}${path}`, res);
         htmx.process(document.querySelector<HTMLElement>(ROOT_SELECTOR)!);
     }
 

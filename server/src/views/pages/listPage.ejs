@@ -16,10 +16,10 @@
             <p class="text-xs text-gray-400"><%- t('todos.count', { count: todos.length }) %></p>
         </div>
         <!-- htmx 手动刷新列表 -->
-        <button class="btn-ghost" hx-get="/todos" hx-target="#todo-list" hx-swap="outerHTML">↻ <%= t('todos.refresh') %></button>
+        <button class="btn-ghost" hx-get="/page/todos" hx-target="#todo-list" hx-swap="outerHTML">↻ <%= t('todos.refresh') %></button>
     </div>
 
-    <form class="mb-5 flex flex-col gap-2 sm:flex-row sm:gap-3" hx-post="/todos" hx-target="#todo-list"
+    <form class="mb-5 flex flex-col gap-2 sm:flex-row sm:gap-3" hx-post="/page/todos" hx-target="#todo-list"
         hx-swap="afterbegin" hx-on::after-request="if(event.detail.successful) this.reset()">
         <!-- <input type="text" name="text" required data-required="<%= t('validation.required') %>" -->
         <input type="text" name="text" data-required="<%= t('validation.required') %>"
