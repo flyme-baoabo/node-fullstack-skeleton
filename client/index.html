@@ -16,11 +16,9 @@
     <div id="root" hx-swap="innerHTML transition:true" class="flex min-h-0 flex-1 flex-col bg-gray-50 text-gray-900">
     </div>
     <script type="module" src="/src/main.ts"></script>
-    <script>
-        // 把当前语言包序列化到 window.I18n，供客户端无感切换语言使用。
-        // 转义标签 "左角+减号" 输出未转义 JSON；i18nJson 缺失时兜底空对象，避免 window.I18n = ; 语法错误。
-        // window.I18n = <%- typeof i18nJson !== 'undefined' ? JSON.stringify(i18nJson) : '{}' %>;
-    </script>
+    <!-- 纯 SPA（静态 shell，无服务端 EJS）：语言包不再由本文件注入。
+         首屏由 main.ts 调 GET /api/i18n 拉取当前语言包 → window.I18n；
+         切换语言由 language.ts 调 POST /api/change-language 更新 window.I18n。 -->
 </body>
 
 </html>

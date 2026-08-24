@@ -27,3 +27,17 @@ export function metaForPath(path: unknown): PageMeta {
     const _path = String(path || INDEX_PATH);
     return PAGE_META[_path] ?? PAGE_META[_path.replace(/\/$/, '')] ?? PAGE_META[INDEX_PATH];
 }
+
+/**
+ * 把「内部注册路径」（带 PAGE_PREFIX 前缀）还原成浏览器地址栏路径，供 nav 高亮等按路由区分的场景使用。
+ * 示例：'/page/' → '/', '/page/list' → '/list'。
+ * 因为在纯 SPA 下，nav 链接 href 是 '/'、'/list'（浏览器路径），而 currentPage 来源是
+ * PAGE_META 的 key（带 /page 前缀）或 /body 的 path 参（同样带前缀），两者对不上会导致高亮失效。
+ */
+export function toClientPath(path: unknown): string {
+    const p = String(path || '');
+    // 去掉 /page 前缀
+    const bare = p.startsWith(PAGE_PREFIX) ? p.slice(PAGE_PREFIX.length) : p;
+    // 去掉尾部斜杠，兜底成 '/'。
+    return bare.replace(/\/$/, '') || '/';
+}

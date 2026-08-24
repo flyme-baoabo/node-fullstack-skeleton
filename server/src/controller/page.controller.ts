@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import { createWebCtx } from '../adapter/webCtx.js';
 import type { PageMeta } from '../views.js';
+import { toClientPath } from '../views.js';
 import { loadI18n } from '../i18n/locales.js';
 import { listTodos } from '../service/todo.service.js';
 
@@ -22,7 +23,8 @@ export function createPageHandler(path: string, meta: PageMeta) {
             title: meta.title,
             todos: listTodos(),
             i18nJson,
-            currentPage: path,
+            // 纯 SPA：路由 key 带 /page 前缀，转成浏览器路径('/'、'/list')供 nav 高亮
+            currentPage: toClientPath(path),
             // 渲染链：内容 -> app-layout(应用外壳) -> 最外层 layout.ejs(<head>/<script>/<link>)
             layouts: [{ tplName: 'layouts/app-layout', slotKey: 'outletContent' }],
         });

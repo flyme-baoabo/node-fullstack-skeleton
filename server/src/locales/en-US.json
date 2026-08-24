@@ -49,7 +49,8 @@
         "request_failed": "Request failed ({{status}}): {{message}}",        
         "swap_failed": "Page update failed, please refresh and try again",        
         "change_language_success": "Language switched successfully",
-        "change_language_failed": "Failed to switch language"
+        "change_language_failed": "Failed to switch language",
+        "get_current_language_failed": "Failed to load current language, please try again later"
     },
     "errors": {
         "todo_empty":       { "code": 40001, "message": "The to-do item cannot be empty!" },

@@ -1,5 +1,5 @@
 import express from 'express';
-import { changeLanguage, renderBody } from '../controller/locale.controller.js';
+import { getI18n, changeLanguage, renderBody } from '../controller/locale.controller.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { PAGE_PREFIX, API_PREFIX } from '../constants.js';
 
@@ -9,6 +9,9 @@ const router = express.Router();
 // 起名 locale 而非 session，避免与“用户登录会话”混淆。
 // 本层只做「路径 → handler」的薄委托，处理逻辑集中在 controller/locale.controller。
 // asyncHandler 把 async controller 的 throw（rejected Promise）转成 next(err) → 全局 errorHandler。
+
+// 纯 SPA 首屏：拉取当前语言包注入 window.I18n（只读，不写 cookie）
+router.get(`${API_PREFIX}/i18n`, asyncHandler(getI18n));
 
 // 语言切换（前端发后拿到当前语言包，更新前端 I18n 字典）
 router.post(`${API_PREFIX}/change-language`, asyncHandler(changeLanguage));

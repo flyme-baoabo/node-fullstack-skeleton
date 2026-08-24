@@ -115,11 +115,11 @@ async function switchLanguage(lang: string): Promise<void> {
     //    PAGE_META 的 key 带 PAGE_PREFIX 前缀，故这里拼上它再 encodeURIComponent。
     //    await htmx.ajax() 表示「该请求的 DOM swap 已完成」，所以紧跟着的 DOM 操作 / 重绑都可靠；本方案无需额外监听 afterSwap。
     const path = encodeURIComponent(`${PAGE_PREFIX}${location.pathname}`);
-    const getBodyRes = await htmx.ajax('get', `${PAGE_PREFIX}/body?path=${path}`, {
+    await htmx.ajax('get', `${PAGE_PREFIX}/body?path=${path}`, {
         target: '#root',
         swap: 'innerHTML', // 整个 #root 替换
     });
-    console.log('获取新语言片段成功', getBodyRes);
+    console.log('获取新语言 html 片段成功');
 
 
     // 3. 同步 <html lang>（第 2 步 swap 已完成，现在写 DOM 正确）
@@ -140,4 +140,24 @@ initLanguageSwitcher();
 // 由于每个容器用 INITIALIZED 守卫防重，重复触发这里的 init 是安全的（已绑的容器会被跳过）。
 document.body.addEventListener('htmx:afterSwap', () => {
     initLanguageSwitcher();
+});
+
+window.addEventListener('DOMContentLoaded', async () => {
+    // 纯 SPA：shell(index.html) 是 Vite 输出的静态文件，无法像旧 SSR 那样由 layout.ejs 注入语言包。
+    // 因此首屏由本端向 GET /api/i18n 拉取「当前语言」的语言包，注入 window.I18n 供前端 t() 使用。
+    // 页面正文文案由服务端 EJS 渲染，不依赖此注入；这里只服务前端 JS 内的 t()（如 toast）。
+    
+    try {
+        const res = await fetch(`${API_PREFIX}/i18n`);
+        if (res.ok) {
+            const data = await res.json() as { lang: string; i18nJson?: StringMap };
+            if (data.i18nJson) {
+                window.I18n = data.i18nJson;
+                document.documentElement.lang = data.lang;
+            }
+        }
+    } catch (error) {
+        console.error('获取当前语言包失败', error);
+        showToast(t('toast.get_current_language_failed'), ToastVariant.Error);
+    }
 });
