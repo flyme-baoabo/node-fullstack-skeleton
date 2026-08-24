@@ -1,12 +1,12 @@
 /**
- * 全局路由常量：SPA 路由统一从 Express 拉取的页面 fragment 入口前缀。
+ * 服务端路由前缀常量：定义 Express 对外暴露的页面路由前缀与 API 路由前缀。
  *
  * 约定：
- *  - SPA 路由 `spaRouter.ts` 请求 `/page${path}` 拿页面内容
- *  - 语言切换 `language.ts` 请求 `/page/body?path=...` 拿整块可替换片段
- *  - 服务端 `PAGE_META`（server/src/views.ts）的 key 同样带此前缀
+ *  - `PAGE_PREFIX` 用于页面/片段路由，如 `/page${path}`、`/page/body?path=...`
+ *  - `API_PREFIX` 用于后端 API 路由，如 `/api/change-language`
+ *  - 服务端 `PAGE_META`（server/src/views.ts）的 key 同样带 `PAGE_PREFIX`
  *
- * 改前缀只需改这一处，无需在多个文件里散落魔法字符串。
+ * 改前缀优先改这里，再同步前端消费端，避免魔法字符串散落。
  */
 export const PAGE_PREFIX = '/page';
 export const API_PREFIX = '/api';

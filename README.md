@@ -14,7 +14,7 @@
 | 模板引擎 | EJS + express-ejs-layouts | 布局 / partial 拆分 |
 | 前端交互 | htmx 2 | 通过 `hx-*` 属性做局部交换 |
 | 样式 | Tailwind CSS | utility-first，按需生成，和模板类名兼容 |
-| 构建 / HMR | Vite 8 | **middleware 模式**内嵌进 Express，同源单进程 |
+| 构建 / HMR | Vite 8 | 双端口 dev server；Vite 提供 SPA shell、模块 transform 与 HMR |
 | 国际化 | i18next + i18next-http-middleware | URL 参数 / Cookie / Accept-Language 三层语言探测 |
 
 ## 目录结构
@@ -67,56 +67,43 @@ project-root/                       # 当前仓库根目录（占位名，取决
 开发模式采用**双端口双进程**架构，端口由 `.env` 中的环境变量驱动（`BACKEND_PORT` / `VITE_PORT`，缺省 `3006` / `5173`）：
 
 - **后端 Express**：端口 `BACKEND_PORT`，渲染 EJS、提供 `/api/*` 与 htmx 局部片段，并托管构建产物静态资源
-- **前端 Vite**：端口 `VITE_PORT`，浏览器唯一入口；开发时通过 `server.proxy['/']` + `bypass` 函数把「SSR 页面路由」转发到 Express（Express 做 SSR 与接口），而 `/@vite/client`、`/client/src/*.(ts|css|scss)` 等前端模块请求交给 Vite 自身完成 transform + HMR
+- **前端 Vite**：端口 `VITE_PORT`，浏览器唯一入口；开发时只把 `/api/*`、`/page/*` 代理到 Express，其余模块请求、静态资源与 `index.html` 均由 Vite 自身处理
 
 `server/src/index.ts` 不再以 middleware 方式加载 Vite，Node(Express) 只做后端、不负责启动前端开发进程。
 
-### Vite 代理分流：`proxy` + `bypass`
+### 纯 SPA 边界（命名空间约定）
 
-双端口下浏览器只访问 `VITE_PORT`，所有请求先到 Vite 的代理中间件，再由 `bypass` 函数决定去向。其返回值语义（已对照 Vite 源码确认）：
+开发态采用纯 SPA 分工：
 
-| `bypass` 返回值 | 源码行为 | 请求去向 |
-|---|---|---|
-| 返回**原 url 字符串** | `req.url = 返回值; return next()` | **交给 Vite** 中间件 transform / HMR |
-| 返回 `undefined` | 不触发 `return`，落到 `proxy.web()` | **代理转发**到 Express 后端 |
-| 返回 `false` | `res.statusCode = 404; res.end()` | **直接 404** |
+- **Express 后端保留**：`/api/*`、`/page/*`
+- **Vite 前端负责**：`/`、`/src/*`、`/@vite/*`、`/node_modules/*`、`/public/*` 暴露出的静态资源，以及其它所有前端模块/资源请求
 
-实际配置（`vite.config.ts`）：
+这条边界的重点不是“前端不能请求后端接口”，而是：
+
+- 前端静态资源目录、public 文件、源码访问路径**不要使用** `/api` 或 `/page` 作为前缀
+- 新增前端资源时，避免出现 `/api/logo.svg`、`/page/app.css` 这类路径
+- 因为开发态 Vite 已把这两个前缀保留给后端代理，若前端占用它们，请求会被转发到 Express 而不是由 Vite 提供
+
+一句话：`/api`、`/page` 是**后端保留命名空间**，不是前端静态资源命名空间。
+
+### Vite 代理分流：前缀代理
+
+双端口下浏览器只访问 `VITE_PORT`。当前分流策略很直接：只代理后端保留前缀，其余请求全部留在 Vite。
+
+实际配置（`client/vite.config.ts`）：
 
 ```ts
 server: {
     port: vitePort,
     proxy: {
-        '/': {
-            target: `http://localhost:${backendPort}`,
-            changeOrigin: true,
-            bypass(req) {
-                const url = (req.url ?? '').split('?')[0];
-                // 属于 Vite 的模块资源：url 前缀 / 源码扩展名 → 交给 Vite transform
-                // public/ 静态资源（根路径暴露，如 /favicon.svg）：fs 真实存在 → 交给 Vite
-                const isVitePath =
-                    url.startsWith('/@vite') ||        // HMR client 及 @vite 模块
-                    url.startsWith('/@fs/') ||         // 虚拟文件系统
-                    url.startsWith('/@id/') ||         // 模块 id 重写
-                    url.startsWith('/node_modules/') ||// 依赖预构建
-                    url.startsWith('/client/src/') ||  // 前端 TS/CSS/SCSS 源文件
-                    ASSET_EXT_RE.test(url);            // 源码及引用的同目录资源
-                const isPublicAsset = !isVitePath && url !== '/' && publicFileExists(url);
-                if (isVitePath || isPublicAsset) return url; // 交给 Vite transform
-                return undefined;                            // 代理给 Express SSR 后端
-            },
-        },
+        '/api': { target: `http://localhost:${backendPort}`, changeOrigin: true },
+        '/page': { target: `http://localhost:${backendPort}`, changeOrigin: true },
     },
 },
-appType: 'custom',
+appType: 'spa',
 ```
 
-> ⚠️ **易踩坑**：`bypass` 返回 `false` 并不是「放行给 Vite」，而是「直接 404」。要把某路径交给 Vite 处理，必须**返回原 url 字符串**；要代理到后端则什么都不返回（`undefined`）。
-
-`ASSET_EXT_RE` 与 `publicFileExists` 定义（模块顶部，源码见 `vite.config.ts`）：
-
-- `ASSET_EXT_RE`：匹配前端源码及其 `import` 引用的同目录资源扩展名（`.ts/.css/.scss/.svg/.png/.woff2`…），**忽略大小写**；刻意不包含 `.html`，避免把 Express SSR 页面误判为静态资源。
-- `publicFileExists`：判断请求 url 是否对应 `client/public/` 下**真实存在的文件**。Vite 会把 `public/` 内容以根路径暴露，如 `/favicon.svg`；若不处理会被 `'/'` 代理误转给后端而 404。
+> ⚠️ **易踩坑**：由于 `/api`、`/page` 已被保留给后端代理，前端不要把静态资源、public 文件或源码访问路径设计成这两个前缀，否则开发态会被错误代理到 Express。
 
 ```bash
 npm install        # 首次安装依赖（含 dotenv）
@@ -195,14 +182,14 @@ nonExplicitSupportedLngs: true,     // 允许“纯语言码”（如 zh / en）
 页头导航通过自定义语言下拉菜单（`src/language.ts`）切换语言，**全程无刷新、无页面跳转**：
 
 1. 点击菜单项 → 拦截 `<a>` 默认跳转，SDK 层调用 `switchLanguage(lang)`；
-2. **POST `/change-language`**：服务端把新的 `lang` 写入 cookie，并返回该语言的语言包 `{ i18nJson, isSuccess }`；前端同步更新 `window.I18n`；
-3. **GET `/body`（htmx.ajax）**：利用 htmx 取回当前页面主体片段，以 `innerHTML` 整块换进 `#root`（不重载整页、不重新执行脚本，只替换页面内已翻译的文本）；
+2. **POST `/api/change-language`**：服务端把新的 `lang` 写入 cookie，并返回该语言的语言包 `{ i18nJson, isSuccess }`；前端同步更新 `window.I18n`；
+3. **GET `/page/body`（htmx.ajax）**：利用 htmx 取回当前页面主体片段，以 `innerHTML` 整块换进 `#root`（不重载整页、不重新执行脚本，只替换页面内已翻译的文本）；
 4. 同步 `<html lang>` 属性；
 5. 重新绑定语言下拉菜单（`initLanguageSwitcher()`，因为 `#root` 已是新 DOM）。
 
 ### 页内结构约定
 
-得益于 `layout.ejs` 的极简设计，**整站主体（header + main + footer）都放在 `index.ejs`**，并整体包在 `<div id="root">` 中。因此语言切换只需让服务端用对应语言包重渲染 `index.ejs`（`/body` 路由，`layout: false` 不套外层布局），取下整块 `#root` 内容替换即可，无需刷新浏览器。
+得益于 `app-layout.ejs` + `#root` 的页面结构，语言切换只需让服务端用对应语言包重渲染当前页面的带壳片段（`/page/body` 路由，`pageLayout:false` 不套最外层 `layout`），取下整块 `#root` 内容替换即可，无需刷新浏览器。
 
 > 语言包以 `window.I18n` 注入供前端使用；页面正文由 htmx 局部替换，其余脚本（htmx、样式）不重复加载。
 
