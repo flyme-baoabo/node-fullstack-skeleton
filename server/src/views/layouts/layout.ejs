@@ -8,6 +8,9 @@
         <%= typeof title !=='undefined' ? title : 'htmx Study' %>
     </title>
 
+    <link rel="icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" href="/favicon.ico" />
+
     <!--
         样式链接：放在 <head> 顶部、可阻塞渲染，避免首屏 FOUC（无样式闪白）。
         生产模式：build 汇集成独立 style.css；开发模式：直接引 Vite 中间件转换后的源 CSS。
