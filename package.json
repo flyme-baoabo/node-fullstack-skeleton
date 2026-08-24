@@ -5,9 +5,11 @@
     "type": "module",
     "main": "server/src/index.ts",
     "scripts": {
-        "dev": "node --watch-path=server --watch-preserve-output --import tsx server/src/index.ts",
+        "dev": "concurrently -k --names server,client --prefix-colors blue,green \"npm:dev:server\" \"npm:dev:client\"",
+        "dev:server": "node --watch-path=server --watch-preserve-output --import tsx server/src/index.ts",
+        "dev:client": "wait-on tcp:0.0.0.0:3006 && vite",
         "build": "vite build",
-        "build:server": "tsc -p tsconfig.server.json && node scripts/build-server.mjs",
+        "build:server": "tsc -p tsconfig.server.json && node scripts/build-server.js",
         "build:all": "npm run build:server && npm run build",
         "typecheck": "tsc --noEmit",
         "start": "NODE_ENV=production node dist-server/index.js",
@@ -23,6 +25,7 @@
         "node": ">=18.0.0"
     },
     "dependencies": {
+        "dotenv": "^17.4.2",
         "ejs": "^6.0.1",
         "express": "^5.2.1",
         "express-ejs-layouts": "^2.5.1",
@@ -36,12 +39,14 @@
         "@types/express-ejs-layouts": "^2.5.4",
         "@types/node": "^26.2.0",
         "@types/supertest": "^7.2.1",
+        "concurrently": "^9.2.1",
         "jiti": "^2.7.0",
         "sass": "^1.102.0",
         "supertest": "^7.2.2",
         "tailwindcss": "^4.1.12",
         "tsx": "^4.23.12",
         "typescript": "^7.0.2",
-        "vite": "^8.2.1"
+        "vite": "^8.2.1",
+        "wait-on": "^8.0.5"
     }
 }

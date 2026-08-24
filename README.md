@@ -62,37 +62,91 @@ project-root/                       # 当前仓库根目录（占位名，取决
 
 > 💡 **数据库目录说明**：`server/src/db/`（含 `prisma/`、`index.ts`、`redis.ts`、`db.config.ts`）目前是**预留的基础模板骨架**，尚未接入真实数据库。当前待办数据仍走 JSON 文件存储（`repository/todo.repository.ts` 读写 `data/todos.json`）；上述骨架不导入任何业务代码、不进入启动链路，`typecheck` 零副作用，待接入 PostgreSQL / Redis 时按配置内注释填充即可。
 
-## 启动方式（仅此一种，无需并行多进程）
+## 启动方式（双端口，env 驱动）
 
-开发模式使用 **Vite 中间件模式**：Vite 以 middleware 形式嵌入 Node 进程，两者**同一端口、同一进程**，天然同源，前端资源经 Vite 热更新，后端改造由 `node --watch` 重启。
+开发模式采用**双端口双进程**架构，端口由 `.env` 中的环境变量驱动（`BACKEND_PORT` / `VITE_PORT`，缺省 `3006` / `5173`）：
+
+- **后端 Express**：端口 `BACKEND_PORT`，渲染 EJS、提供 `/api/*` 与 htmx 局部片段，并托管构建产物静态资源
+- **前端 Vite**：端口 `VITE_PORT`，浏览器唯一入口；开发时通过 `server.proxy['/']` + `bypass` 函数把「SSR 页面路由」转发到 Express（Express 做 SSR 与接口），而 `/@vite/client`、`/client/src/*.(ts|css|scss)` 等前端模块请求交给 Vite 自身完成 transform + HMR
+
+`server/src/index.ts` 不再以 middleware 方式加载 Vite，Node(Express) 只做后端、不负责启动前端开发进程。
+
+### Vite 代理分流：`proxy` + `bypass`
+
+双端口下浏览器只访问 `VITE_PORT`，所有请求先到 Vite 的代理中间件，再由 `bypass` 函数决定去向。其返回值语义（已对照 Vite 源码确认）：
+
+| `bypass` 返回值 | 源码行为 | 请求去向 |
+|---|---|---|
+| 返回**原 url 字符串** | `req.url = 返回值; return next()` | **交给 Vite** 中间件 transform / HMR |
+| 返回 `undefined` | 不触发 `return`，落到 `proxy.web()` | **代理转发**到 Express 后端 |
+| 返回 `false` | `res.statusCode = 404; res.end()` | **直接 404** |
+
+实际配置（`vite.config.ts`）：
+
+```ts
+server: {
+    port: vitePort,
+    proxy: {
+        '/': {
+            target: `http://localhost:${backendPort}`,
+            changeOrigin: true,
+            bypass(req) {
+                const url = (req.url ?? '').split('?')[0];
+                // 属于 Vite 的模块资源：url 前缀 / 源码扩展名 → 交给 Vite transform
+                // public/ 静态资源（根路径暴露，如 /favicon.svg）：fs 真实存在 → 交给 Vite
+                const isVitePath =
+                    url.startsWith('/@vite') ||        // HMR client 及 @vite 模块
+                    url.startsWith('/@fs/') ||         // 虚拟文件系统
+                    url.startsWith('/@id/') ||         // 模块 id 重写
+                    url.startsWith('/node_modules/') ||// 依赖预构建
+                    url.startsWith('/client/src/') ||  // 前端 TS/CSS/SCSS 源文件
+                    ASSET_EXT_RE.test(url);            // 源码及引用的同目录资源
+                const isPublicAsset = !isVitePath && url !== '/' && publicFileExists(url);
+                if (isVitePath || isPublicAsset) return url; // 交给 Vite transform
+                return undefined;                            // 代理给 Express SSR 后端
+            },
+        },
+    },
+},
+appType: 'custom',
+```
+
+> ⚠️ **易踩坑**：`bypass` 返回 `false` 并不是「放行给 Vite」，而是「直接 404」。要把某路径交给 Vite 处理，必须**返回原 url 字符串**；要代理到后端则什么都不返回（`undefined`）。
+
+`ASSET_EXT_RE` 与 `publicFileExists` 定义（模块顶部，源码见 `vite.config.ts`）：
+
+- `ASSET_EXT_RE`：匹配前端源码及其 `import` 引用的同目录资源扩展名（`.ts/.css/.scss/.svg/.png/.woff2`…），**忽略大小写**；刻意不包含 `.html`，避免把 Express SSR 页面误判为静态资源。
+- `publicFileExists`：判断请求 url 是否对应 `client/public/` 下**真实存在的文件**。Vite 会把 `public/` 内容以根路径暴露，如 `/favicon.svg`；若不处理会被 `'/'` 代理误转给后端而 404。
 
 ```bash
-npm install        # 首次安装依赖
-npm run dev        # 同时启动后端(Express:3000) + 前端(Vite HMR)
+npm install        # 首次安装依赖（含 dotenv）
+npm run dev        # 同时启动后端(Express:BACKEND_PORT)，Vite 端口就绪后再拉起
+npm run dev:server # 仅启动后端
+npm run dev:client # 仅启动前端（Node 脚本：读 .env → 等 BACKEND_PORT → 拉 vite）
 npm run build      # 仅构建前端产物到 dist-client/
 npm start          # 生产模式：服务 dist-client 静态资源
 npm test           # 运行测试
 ```
 
-> `npm run dev` = Node + Vite **一条命令同时启动**，无需 `vite` 与 `node` 分开启动。
+> `npm run dev` 由 `concurrently -k` 并发拉起两个进程；其中 `dev:client` 用 `scripts/dev-client.mjs`（而非 shell 变量，兼顾 Windows）加载 `.env` 并轮询等待后端端口就绪，因此**严格先起 server 再起 client**。开发时浏览器访问 **http://localhost:${VITE_PORT}**；Express 由 `node --watch-path=server` 在文件变更时自行重启，Vite 由自己的 dev server 做前端热更。
 
 ### 开发态进程生命周期（退场 / 入场）
 
-当前开发模式是**单进程**：Express、Vite middleware、Vite HMR 都挂在同一个 Node 进程和同一个 HTTP 端口上。
+开发模式是**两个独立进程**：Express 只做后端，Vite dev server 由 `concurrently` 拉起。这里描述的退场/入场只针对 Express 进程。
 
-这意味着服务端文件变更时，不只是“旧进程退出、新进程启动”这么简单，还存在一个短暂交接窗口：
+服务端文件变更时，Express 由 `node --watch-path=server` 重启，旧进程退场、新进程入场之间存在一个短暂交接窗口：
 
-1. **退场**：旧进程收到 `SIGTERM`（watch 重启）或 `SIGINT`（用户 `Ctrl+C`）后，要尽快关闭 HTTP server、现有 socket 和 Vite 自身资源。
+1. **退场**：旧进程收到 `SIGTERM`（watch 重启）或 `SIGINT`（用户 `Ctrl+C`）后，尽快关闭 HTTP server 与现有 socket。
 2. **入场**：新进程启动时，若旧进程还没完全释放端口，新的 `server.listen(port)` 可能先遇到 `EADDRINUSE`，此时需要短暂重试。
 
 本项目把这两个阶段拆成两个独立 util：
 
 | 阶段 | 文件 | 作用 |
 |---|---|---|
-| 退场 | `server/src/utils/gracefulShutdown.ts` | 关闭旧进程的 HTTP 监听、socket 和 Vite 资源，尽量缩短旧进程占端口时间 |
+| 退场 | `server/src/utils/gracefulShutdown.ts` | 关闭旧进程的 HTTP 监听与 socket，尽量缩短旧进程占端口时间 |
 | 入场 | `server/src/utils/listenWithRetry.ts` | 新进程监听端口时若遇到 `EADDRINUSE`，稍等后重试，避免因为旧进程晚几百毫秒释放端口而直接崩掉 |
 
-`server/src/runtime/shutdownRuntime.ts` 只负责把退场逻辑注册到进程信号；开发模式下的 Vite 创建仍直接保留在 `server/src/index.ts` 的 `if (!isProd)` 分支里，便于从入口一眼看出 dev / prod 差异。
+`server/src/runtime/shutdownRuntime.ts` 只负责把 Express 的退场逻辑注册到进程信号；Vite 已独立成前端进程，不再由 Express 管理它的资源。
 
 可以把它理解为：
 
