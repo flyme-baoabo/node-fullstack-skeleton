@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 @source "./**/*.{ts,js,css}";
-@source "../server/views/**/*.ejs";
+@source "../../server/src/views/**/*.ejs";
 
 /* ---- 统一设计 token（一套间距 / 圆角 / 阴影走到底） ---- */
 @theme {
