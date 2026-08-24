@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Node Fullstack SPA </title>
+
+    <link rel="icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" href="/favicon.ico" />
+
+</head>
+
+<body class="flex h-screen flex-col overflow-hidden bg-gray-50 text-gray-900">
+    <!-- 极简根容器：整站主体(header+main+footer)都在 index.ejs；语言切换无感刷新时整块替换 -->
+    <div id="root" hx-swap="innerHTML transition:true" class="flex min-h-0 flex-1 flex-col bg-gray-50 text-gray-900">
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+    <script>
+        // 把当前语言包序列化到 window.I18n，供客户端无感切换语言使用。
+        // 转义标签 "左角+减号" 输出未转义 JSON；i18nJson 缺失时兜底空对象，避免 window.I18n = ; 语法错误。
+        // window.I18n = <%- typeof i18nJson !== 'undefined' ? JSON.stringify(i18nJson) : '{}' %>;
+    </script>
+</body>
+
+</html>

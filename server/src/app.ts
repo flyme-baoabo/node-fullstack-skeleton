@@ -1,7 +1,6 @@
 import express from 'express';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import expressLayouts from 'express-ejs-layouts';
 import { initI18n } from './i18n/config.js';
 import { i18nRequest, localeBridge } from './middleware/i18n.middleware.js';
 import { requestId } from './middleware/requestId.middleware.js';
@@ -26,8 +25,6 @@ export async function createApp(): Promise<Express> {
     // 视图引擎
     app.set('view engine', 'ejs');
     app.set('views', path.join(__dirname, 'views'));
-    app.set('layout', 'layouts/layout');
-    app.use(expressLayouts);
 
     // 视图可见标志：开发(true) 由 Vite 提供前端资源；生产(false) 用 dist 静态资源
     app.locals.isDev = process.env.NODE_ENV !== 'production';

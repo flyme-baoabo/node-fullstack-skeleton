@@ -10,17 +10,15 @@ import { publicFileExists } from './vite.utils.ts';
 const vitePort = Number(process.env.VITE_PORT) || 5173;
 const backendPort = Number(process.env.BACKEND_PORT) || 3006;
 
-// let reqId = 0; // 用于给每个请求分配唯一 id，便于日志追踪
+let reqId = 0; // 用于给每个请求分配唯一 id，便于日志追踪
 
 // 该项目的角色：为服务端渲染的 Express 应用编译前端资源（htmx 入口、CSS）
 // - dev: 独立 dev server（双端口），把「SSR 页面路由」代理到 Express 后端，前端模块交给 Vite transform
 // - build: 产出固定命名的 assets，供 EJS 布局直接引用
 export default defineConfig({
     plugins: [tailwindcss()],
-    appType: 'custom',
+    appType: 'spa',
     // 静态资源目录：Vite dev（middleware 模式）与 build 都会把它暴露/复制到站点根路径 /。
-    // 项目把 favicon 放在 client/public/，默认 publicDir 是 <root>/public，故需显式指定，否则 dev 下 /favicon.ico 会 404。
-    publicDir: 'client/public',
     // 开发模式双端口：
     //   - Vite 监听 VITE_PORT，是浏览器唯一入口
     //   - '/' 代理把「页面 / 片段 / API」SSR 路由转发到 Express(BACKEND_PORT)
@@ -35,7 +33,7 @@ export default defineConfig({
                 // 其余 SSR 页面路由：返回 undefined → 转发到 Express 后端
                 bypass(req) {
                     const url = (req.url ?? '').split('?')[0];
-                    // console.log(`[vite.proxy.bypass] reqId=${++reqId} url=${url}`);
+                    console.log(`[vite.proxy.bypass] reqId=${++reqId} url=${url}`);
                     // Vite 应处理的路径判定（前缀 / 扩展名 / 存在的 public 静态文件）：
                     //   - 前缀：Vite 虚拟模块(@vite/@fs/@id…)、依赖预构建、前端源码树
                     //   - 扩展名：源码及其 import 引用的同目录资源（图片/字体/map/worker…）
@@ -51,6 +49,7 @@ export default defineConfig({
                         ASSET_EXT_RE.test(url);
                     const isPublicAsset = !isVitePath && url !== '/' && publicFileExists(url);
                     if (isVitePath || isPublicAsset) return url; // 交给 Vite
+                    if (!url.startsWith('/page')) return url;  // 交给 Vite
                     return undefined; // 代理给 Express SSR 后端
                 },
             },
@@ -63,7 +62,9 @@ export default defineConfig({
         cssCodeSplit: false,
         rollupOptions: {
             // 把 client/src/main.ts 作为唯一构建入口
-            input: 'client/src/main.ts',
+            // 注意：dev-client.js / build-client.js 均已 process.chdir(clientDir)，cwd=client/，
+            // 故 input 相对 cwd 写 src/main.ts（不能写 client/src/main.ts，否则解析成 client/client/src 导致依赖预构建失败）
+            input: 'src/main.ts',
             output: {
                 //  产物平铺到 outDir 根：JS 进 js/，CSS 等资源放根目录
                 entryFileNames: 'js/main.js',

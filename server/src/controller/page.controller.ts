@@ -25,7 +25,6 @@ export function createPageHandler(path: string, meta: PageMeta) {
             currentPage: path,
             // 渲染链：内容 -> app-layout(应用外壳) -> 最外层 layout.ejs(<head>/<script>/<link>)
             layouts: [{ tplName: 'layouts/app-layout', slotKey: 'outletContent' }],
-            useOuterEjsLayout: true,
         });
     };
 }

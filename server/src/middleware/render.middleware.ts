@@ -21,9 +21,7 @@ function renderToHtml(res: Response, view: string, locals: Record<string, any>):
  * 1. 先渲染业务页面，layout:false 拿到初始html片段
  * 2. 遍历layouts数组：
  *    - 非最后一层：renderToHtml 获取字符串，循环拼装，layout强制false
- *    - 最后一层：直接调用 res.render，根据 useOuterEjsLayout 设置 layout 参数，由框架输出响应
  * 3. layouts为空时直接输出业务页面html
- * 4. 兼容旧 pageShell / pageLayout 调用方式
  *
  * @example
  * res.renderPage('admin/dashboard', {
@@ -31,7 +29,6 @@ function renderToHtml(res: Response, view: string, locals: Record<string, any>):
  *     { tplName: 'admin/wrapper', slotKey: 'innerHtml' },
  *     { tplName: 'app-layout', slotKey: 'outletContent' }
  *   ],
- *   useOuterEjsLayout: true,
  *   title: '管理后台'
  * })
  */
@@ -43,10 +40,8 @@ export default function renderPageMiddleware(req: Request, res: Response, next: 
     res.renderPage = async function renderPage(pageView: string, options: RenderPageOptions) {
         const {
             layouts = [],
-            useOuterEjsLayout,
             pageShell = 'layouts/app-layout',
             pageShellSlot = 'outletContent',
-            pageLayout,
             ...pageOptions
         } = options;
 
@@ -57,9 +52,6 @@ export default function renderPageMiddleware(req: Request, res: Response, next: 
             stack = [{ tplName: pageShell, slotKey: pageShellSlot }];
         }
 
-        // 优先级：useOuterEjsLayout > pageLayout > 默认true
-        const outerFlag = useOuterEjsLayout ?? pageLayout ?? true;
-
         try {
             // 渲染业务页面本体，关闭布局，拿到原始html片段
             let currentHtml = await renderToHtml(res, pageView, {
@@ -67,42 +59,17 @@ export default function renderPageMiddleware(req: Request, res: Response, next: 
                 layout: false
             });
 
-            const len = stack.length;
+            for (const layout of stack) {
+                const { tplName, slotKey } = layout;
+                currentHtml = await renderToHtml(res, tplName, {
+                    ...pageOptions,
+                    [slotKey]: currentHtml,
+                    layout: false
+                });
 
-            for (let i = 0; i < len; i++) {
-                const layer = stack[i];
-                const { tplName, slotKey } = layer;
-                const isLastLayer = i === len - 1;
-
-                if (!isLastLayer) {
-                    // 中间层：拿到html字符串继续拼装，强制 layout:false
-                    currentHtml = await renderToHtml(res, tplName, {
-                        ...pageOptions,
-                        [slotKey]: currentHtml,
-                        layout: false
-                    });
-                } else {
-                    // 最后一层：渲染出完整 HTML 字符串，再由外层 layout 包裹后主动 send。
-                    // 不要走 res.render(…, {layout})：若全局注册了 express-ejs-layouts，
-                    // 其 res.render 劫持可能让响应缓冲却永不 end，导致请求一直 pending。
-                    const innerHtml = await renderToHtml(res, tplName, {
-                        ...pageOptions,
-                        [slotKey]: currentHtml,
-                        layout: false
-                    });
-
-                    const finalHtml = outerFlag
-                        ? await renderToHtml(res, 'layouts/layout', {
-                              ...pageOptions,
-                              body: innerHtml,
-                              layout: false
-                          })
-                        : innerHtml;
-
-                    res.status(200).type('html').send(finalHtml);
-                    // 直接返回，防止执行到 catch / res.send 造成重复响应
-                    return;
-                }
+                res.status(200).type('html').send(currentHtml);
+                // 直接返回，防止执行到 catch / res.send 造成重复响应
+                return;
             }
 
             // layouts为空：没有任何外壳，直接输出业务页面渲染结果

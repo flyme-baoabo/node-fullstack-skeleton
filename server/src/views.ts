@@ -12,8 +12,8 @@ export interface PageMeta {
 }
 
 export const PAGE_META: Record<string, PageMeta> = {
-    '/': { view: 'pages/index', title: 'htmx Study' },
-    '/list': { view: 'pages/listPage', title: '待办清单 - htmx Study' },
+    '/page': { view: 'pages/index', title: 'htmx Study' },
+    '/page/list': { view: 'pages/listPage', title: '待办清单 - htmx Study' },
 };
 
 /** 按 path 取页面元信息；未知 path 兜底到首页。 */

@@ -18,7 +18,7 @@ const DATA_EXT = ['map', 'json', 'xml', 'wasm'];
 // 文档
 const DOC_EXT = ['pdf', 'txt', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'csv', 'md'];
 
-// 组装为 Asset 扩展名大正则；忽略大小写；刻意不匹配 .html，避免把 Express SSR 页面路由误判为静态
+// 组装为 Asset 扩展名大正则；忽略大小写；
 //   \\.      = 字面量点号（new RegExp 传字符串，反斜杠要多写一层，字符串 \\ 解码成正则 \.）
 //             作用：把"图片名 foo"和"扩展名 png"分隔开的那个小圆点
 //   (?:...)  = 非捕获分组：只用来把下面一大串扩展名"框成一个整体"，让结尾的 $ 对整个列表生效
@@ -32,6 +32,6 @@ const DOC_EXT = ['pdf', 'txt', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'csv
 //   $        = 锚定到字符串结尾，保证必须是"某些扩展名收尾"，避免 ...md 之类半截误命中
 //   'i'      = 忽略大小写，.PNG / .png 都算
 export const ASSET_EXT_RE = new RegExp(
-    `\\.(?:${[...STYLE_EXT, ...CODE_EXT, ...IMAGE_EXT, ...FONT_EXT, ...MEDIA_EXT, ...DATA_EXT, ...DOC_EXT].join('|')})$`,
+    `\\.(?:${['html', ...STYLE_EXT, ...CODE_EXT, ...IMAGE_EXT, ...FONT_EXT, ...MEDIA_EXT, ...DATA_EXT, ...DOC_EXT].join('|')})$`,
     'i',
 );
