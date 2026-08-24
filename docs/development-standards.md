@@ -141,9 +141,9 @@ app.use(renderPageMiddleware);            // ④ 后挂 res.renderPage
 
 ## 7. 开发态进程生命周期（退场 / 入场）
 
-开发模式采用 **Node watch + Vite middleware 单进程**。也就是说，Express、Vite HMR、Vite watcher 共用同一个 Node 进程和同一个 HTTP 端口。
+开发模式采用 **双端口双进程**。Express 只做后端，Vite dev server 独立运行，并通过代理把 SSR 页面路由转回后端。
 
-因此，服务端文件变更后的进程切换分为两个阶段，职责不能混：
+因此，这里描述的退场 / 入场只针对 Express 进程；服务端文件变更后的进程切换分为两个阶段，职责不能混：
 
 ### 7.1 退场：旧进程怎么尽快退出
 
@@ -157,10 +157,9 @@ app.use(renderPageMiddleware);            // ④ 后挂 res.renderPage
 1. 跟踪 `http.Server` 上的连接 socket
 2. 调 `server.close()` 停止接受新连接
 3. 调 `closeIdleConnections` / `closeAllConnections` 并结束已有 socket
-4. 并行关闭外部资源（当前是 `vite.close()`）
-5. 超时后强制 destroy 剩余连接，避免旧进程长期占住端口
+4. 超时后强制 destroy 剩余连接，避免旧进程长期占住端口
 
-**边界：** 这段逻辑只负责旧进程退场，不负责重启新进程；它的目标是尽快释放 server 和开发环境下的 vite 资源，让端口尽快可用。
+**边界：** 这段逻辑只负责旧进程退场，不负责重启新进程；它的目标是尽快释放 server 资源，让端口尽快可用。Vite 已由独立前端进程管理，不在这里收尾。
 
 ### 7.2 入场：新进程启动时端口还没空怎么办
 
@@ -186,9 +185,9 @@ app.use(renderPageMiddleware);            // ④ 后挂 res.renderPage
 ### 7.4 代码组织约定
 
 - `server/src/utils/gracefulShutdown.ts` 和 `server/src/utils/listenWithRetry.ts` 属于**底层运行时能力**，适合放 `utils/`
-- `server/src/index.ts` 负责**装配**：创建 app/server、在 `if (!isProd)` 中直接创建并挂载 Vite、中间件、启动 listen
+- `server/src/index.ts` 负责**装配**：创建 app/server、生产态挂静态资源、启动 listen
 - `server/src/runtime/shutdownRuntime.ts` 负责把退场逻辑注册到进程信号，属于**运行时装配**，但不是底层能力本身
-- 当前约定是：**Vite 创建直接留在入口里以保持 dev/prod 分支可见；shutdown 注册可放 runtime 层；底层能力继续放 utils 层**
+- 当前约定是：**Vite 保持为独立前端进程；shutdown 注册放 runtime 层；底层能力继续放 utils 层**
 
 一句话记法：
 

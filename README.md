@@ -53,7 +53,7 @@ project-root/                       # 当前仓库根目录（占位名，取决
 ├─ tsconfig.json                    # 全局 TS 基础配置（前后端共用）
 ├─ tsconfig.server.json             # 服务端 TS 独立编译配置
 ├─ scripts/
-│  └─ build-server.mjs              # 服务端编译后置处理脚本（拷贝 .ejs/.json 等静态资源）
+│  └─ build-server.js               # 服务端编译后置处理脚本（拷贝 .ejs/.json 等静态资源）
 ├─ .env                             # 本地环境变量（已 gitignore，不入库）
 ├─ .env.example                     # 环境变量模板
 ├─ docker-compose.yml               # 全局容器编排（仅中间件）
@@ -62,14 +62,16 @@ project-root/                       # 当前仓库根目录（占位名，取决
 
 > 💡 **数据库目录说明**：`server/src/db/`（含 `prisma/`、`index.ts`、`redis.ts`、`db.config.ts`）目前是**预留的基础模板骨架**，尚未接入真实数据库。当前待办数据仍走 JSON 文件存储（`repository/todo.repository.ts` 读写 `data/todos.json`）；上述骨架不导入任何业务代码、不进入启动链路，`typecheck` 零副作用，待接入 PostgreSQL / Redis 时按配置内注释填充即可。
 
-## 启动方式（双端口，env 驱动）
+## 启动方式（双端口）
 
-开发模式采用**双端口双进程**架构，端口由 `.env` 中的环境变量驱动（`BACKEND_PORT` / `VITE_PORT`，缺省 `3006` / `5173`）：
+开发模式采用**双端口双进程**架构：
 
-- **后端 Express**：端口 `BACKEND_PORT`，渲染 EJS、提供 `/api/*` 与 htmx 局部片段，并托管构建产物静态资源
-- **前端 Vite**：端口 `VITE_PORT`，浏览器唯一入口；开发时通过 `server.proxy['/']` + `bypass` 函数把「SSR 页面路由」转发到 Express（Express 做 SSR 与接口），而 `/@vite/client`、`/client/src/*.(ts|css|scss)` 等前端模块请求交给 Vite 自身完成 transform + HMR
+- **后端 Express**：端口由 `BACKEND_PORT` 控制（缺省 `3006`），渲染 EJS、提供 `/api/*` 与 htmx 局部片段，并托管构建产物静态资源
+- **前端 Vite**：端口由 `VITE_PORT` 控制（缺省 `5173`），浏览器唯一入口；开发时通过 `server.proxy['/']` + `bypass` 函数把「SSR 页面路由」转发到 Express（Express 做 SSR 与接口），而 `/@vite/client`、`/client/src/*.(ts|css|scss)` 等前端模块请求交给 Vite 自身完成 transform + HMR
 
 `server/src/index.ts` 不再以 middleware 方式加载 Vite，Node(Express) 只做后端、不负责启动前端开发进程。
+
+> 当前 `package.json` 中的 `dev:client` 脚本是 `wait-on tcp:0.0.0.0:3006 && vite`：也就是说，Vite 自身端口仍由 `VITE_PORT` 驱动，但它会先等待 `3006` 端口上的后端就绪后再启动。因此若修改 `BACKEND_PORT`，也需要同步调整该脚本中的等待端口。
 
 ### Vite 代理分流：`proxy` + `bypass`
 
@@ -122,13 +124,13 @@ appType: 'custom',
 npm install        # 首次安装依赖（含 dotenv）
 npm run dev        # 同时启动后端(Express:BACKEND_PORT)，Vite 端口就绪后再拉起
 npm run dev:server # 仅启动后端
-npm run dev:client # 仅启动前端（Node 脚本：读 .env → 等 BACKEND_PORT → 拉 vite）
+npm run dev:client # 仅启动前端（先等待默认后端 3006 端口就绪，再启动 vite）
 npm run build      # 仅构建前端产物到 dist-client/
 npm start          # 生产模式：服务 dist-client 静态资源
 npm test           # 运行测试
 ```
 
-> `npm run dev` 由 `concurrently -k` 并发拉起两个进程；其中 `dev:client` 用 `scripts/dev-client.mjs`（而非 shell 变量，兼顾 Windows）加载 `.env` 并轮询等待后端端口就绪，因此**严格先起 server 再起 client**。开发时浏览器访问 **http://localhost:${VITE_PORT}**；Express 由 `node --watch-path=server` 在文件变更时自行重启，Vite 由自己的 dev server 做前端热更。
+> `npm run dev` 由 `concurrently -k` 并发拉起两个进程。当前 `dev:client` 直接使用 `wait-on tcp:0.0.0.0:3006 && vite` 等待默认后端端口可用后再启动 Vite，因此开发时浏览器访问 **http://localhost:${VITE_PORT}**；Express 由 `node --watch-path=server` 在文件变更时自行重启，Vite 由自己的 dev server 做前端热更。
 
 ### 开发态进程生命周期（退场 / 入场）
 
@@ -174,21 +176,22 @@ npm test           # 运行测试
 
 ### 语言码归一化
 
-浏览器发送的 `Accept-Language` 写法五花八门（小写、缺区域、乱序），通过 `supportedLngs` + `nonExplicitSupportedLngs` 把它们统一归一到应用支持的语言：
+浏览器发送的 `Accept-Language` 写法五花八门（小写、缺区域、乱序）。当前实现通过 `supportedLngs` 做白名单约束，并依赖 i18next 默认的大小写不敏感匹配来归一应用支持的语言：
 
 ```js
 supportedLngs: ['zh-CN', 'en-US'],  // 白名单：只允许这两种语言码，其余一律回退 fallbackLng
-nonExplicitSupportedLngs: true,     // 允许“纯语言码”（如 zh / en）按前缀匹配到列表内的完整码
+// nonExplicitSupportedLngs: true,  // 当前禁用：与 supportedLngs 同开会触发嵌套 key 解析异常
 ```
 
 | 请求语言 | 匹配机制 | 结果 |
 |---|---|---|
 | `zh-CN` / `zh-cn` | 大小写不敏感精确匹配（默认行为） | `zh-CN` |
-| `zh`（无区域） | `nonExplicitSupportedLngs` 前缀匹配 | `zh-CN` |
-| `en` / `en-US` / `en-us` | 同上 | `en-US` |
+| `zh`（无区域） | 未命中白名单完整码，回退 `fallbackLng` | `zh-CN` |
+| `en-US` / `en-us` | 大小写不敏感精确匹配（默认行为） | `en-US` |
+| `en`（无区域） | 未命中白名单完整码，回退 `fallbackLng` | `zh-CN` |
 | `zh-TW` / `ja-JP` 等 | 被 `supportedLngs` 白名单拦下 | 回退 `zh-CN` |
 
-> ⚠️ 前缀匹配按数组顺序取「第一个以该码开头的完整码」。**如果将来同时加入 `zh-CN` 与 `zh-TW`，`supportedLngs` 里谁排在前，纯 `zh` 就归谁**，请把想作为默认中文的放前面。
+> ⚠️ 当前项目刻意不启用 `nonExplicitSupportedLngs`。原因是 i18next 26.3.6 下它与 `supportedLngs` 同时开启会导致嵌套翻译 key 解析失效，页面直接回显 key。若将来要重新支持 `zh` / `en` 这类无区域语言码，需先验证该版本行为再开启。
 
 ### 语言切换如何工作
 
