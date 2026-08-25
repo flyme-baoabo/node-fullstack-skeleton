@@ -1,6 +1,11 @@
-# 单镜像构建整个项目：
-#   - build:server  —— tsc 编译 TS → dist-server，build-server.js 把 .ejs/.json 等静态资源拷进 dist-server
-#   - build         —— vite build 产出 dist-client（EJS 布局直接引用其中的 js/main.js、assets/style.css）
+# 单镜像构建整个项目（SPA 模式，单端口部署）：
+#   - build:server —— tsc 编译 TS → dist-server，build-server.js 把 .ejs/.json 等静态资源拷进 dist-server
+#   - build:client —— vite build 产出 dist-client 作为唯一浏览器入口
+#
+# SPA 单端口运行时形态（唯一进程 node dist-server/index.js 承担全部）：
+#   · express.static(dist-client)  托管 index.html / js / assets 静态资源
+#   · /api/*、/page/*              后端路由（业务接口 + 页面路由/片段渲染）
+#   浏览器首页 index.html → main.ts → htmx/spaRouter 拉取 /page/<path> 片段与 /api/* 数据。
 #
 # 说明：
 #   - i18n 字典（.json）经 const import 静态编译进 dist-server，运行阶段无需再拷；
@@ -10,8 +15,8 @@ WORKDIR /app
 # 先装依赖，利用包缓存
 COPY package*.json ./
 RUN npm ci
-# 拷贝构建所需源码与配置
-COPY tsconfig.base.json tsconfig.json tsconfig.server.json vite.config.ts vite.constants.ts vite.utils.ts ./
+# 拷贝根级配置。vite.*.ts 均在 client/ 下，由下方 COPY client ./client 带入 /app/client/，根目录不存在、勿在此再拷。
+COPY tsconfig.base.json tsconfig.json tsconfig.server.json ./
 COPY server ./server
 COPY client ./client
 COPY scripts ./scripts
@@ -31,7 +36,7 @@ COPY package*.json ./
 RUN npm ci --omit=dev
 # 后端编译产物（含被 build-server.js 拷入的 views 静态资源）
 COPY --from=builder /app/dist-server ./dist-server
-# 前端构建产物，供后端静态托管 + EJS 布局引用
+# 前端构建产物（index.html/js/css），供后端 express.static(dist-client) 静态托管
 COPY --from=builder /app/dist-client ./dist-client
 # 待办持久化数据目录（server.dataDir 默认指向项目根下 data）
 RUN mkdir -p data

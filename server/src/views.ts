@@ -1,4 +1,4 @@
-import { PAGE_PREFIX } from './constants';
+import { PAGE_PREFIX } from './constants.js';
 
 /**
  * 页面注册表：URL 路径 -> 页面内容视图 + 标题。

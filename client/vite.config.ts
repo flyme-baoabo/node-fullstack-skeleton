@@ -22,6 +22,9 @@ let reqId = 0; // 用于给每个请求分配唯一 id，便于日志追踪
 // 该项目的角色：为服务端渲染的 Express 应用编译前端资源（htmx 入口、CSS）
 // - dev: 独立 dev server（双端口），把「SSR 页面路由」代理到 Express 后端，前端模块交给 Vite transform
 // - build: 产出固定命名的 assets，供 EJS 布局直接引用
+//   · JS → dist-client/js/main.js（entryFileNames）
+//   · CSS → dist-client/style.css（cssCodeSplit:false，assets 资源位于 assets目录）
+
 export default defineConfig({
     plugins: [tailwindcss()],
     appType: 'spa',
@@ -72,22 +75,22 @@ export default defineConfig({
         },
     },
     build: {
-        outDir: 'dist-client',
         emptyOutDir: true,
         // 关闭 css code-split，让样式汇总为单一 style.css，便于 EJS 布局 <link> 引用
         cssCodeSplit: false,
         rollupOptions: {
-            // 把 client/src/main.ts 作为唯一构建入口
-            // 注意：dev-client.js / build-client.js 均已 process.chdir(clientDir)，cwd=client/，
-            // 故 input 相对 cwd 写 src/main.ts（不能写 client/src/main.ts，否则解析成 client/client/src 导致依赖预构建失败）
-            input: 'src/main.ts',
+            // 以 index.html 为 HTML 入口（Vite 自动解析其中 <script src="/src/main.ts"> 作 JS 入口），
+            // 产物才会正确输出 index.html + js/main.js + assets。
+            // ⚠️ 不能改成 'src/main.ts'：那样会丢掉 HTML 壳（index.html 不进产物，express.static 无壳可回退）。
+            // input 默认就是 index.html，显式写出以免误删。
+            input: 'index.html',
             output: {
-                //  产物平铺到 outDir 根：JS 进 js/，CSS 等资源放根目录
+                //  产物布局：JS 进 js/，CSS 等资源进 assets/ 
                 entryFileNames: 'js/main.js',
                 // 与 entryFileNames / assetFileNames 一致：固定名、不带 contenthash，
                 // 保证文件名可预测、EJS 布局可直接写死引用（本项目无动态 import，实际不产出 chunk）
                 chunkFileNames: 'js/[name].js',
-                assetFileNames: '[name][extname]',
+                assetFileNames: 'assets/[name][extname]',
             },
         },
     },

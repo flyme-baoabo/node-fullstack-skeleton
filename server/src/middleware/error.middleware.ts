@@ -180,8 +180,16 @@ function attachErrorHeaders(
 ): void {
     const { code, message, messageKey } = sendData;
     res.setHeader('X-Error-Code', String(code));
-    res.setHeader('X-Error-Message', message);
+    // HTTP 头值只允许 latin-1（字节 0-255）：翻译后的 message 可能是中文（非 ASCII），
+    // 直接 setHeader 会抛 ERR_INVALID_CHAR（Invalid character in header content）。这里安全化：
+    // 非 ASCII 一律替换为 '?'，避免整条请求因头非法而连锁 500。
+    res.setHeader('X-Error-Message', toHeaderSafe(message));
     res.setHeader('X-Error-Key', messageKey);
+}
+
+/** 把可能含非 ASCII（如中文文案）的字符串转成 HTTP 头安全值：超出 latin-1 的字符替换为 '?'。 */
+function toHeaderSafe(value: string): string {
+    return value.replace(/[^\x00-\x7F]/g, '?');
 }
 
 /**

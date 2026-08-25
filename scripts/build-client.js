@@ -16,8 +16,8 @@ import { setupWorkDir, getCliArgs } from './vite-utils.js'
     const buildConfig = {
       // root: clientDir,
       build: {
-        // 产物输出到项目根目录 client‑dist，不在client内部
-        outDir: path.resolve(rootDir, './client-dist'),
+        // 产物输出到项目根目录 dist-client ，不在client内部
+        outDir: path.resolve(rootDir, './dist-client'),
         emptyOutDir: true
       }
     }
