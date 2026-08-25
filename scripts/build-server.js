@@ -1,7 +1,7 @@
 // 通用静态资源拷贝：把 server/src 下「tsc 不会产出」的文件原样复制到 dist-server。
 // tsc -p tsconfig.server.json 负责：编译 .ts -> .js，以及「被动 import 的 .json」（resolveJsonModule）。
 // 本脚本补齐 tsc 不碰的文件：.ejs、未被 import 的 .json、.svg/.png/.woff 等其他一切静态资源。
-// 用法：node scripts/build-server.mjs
+// 用法：node scripts/build-server.js
 import { mkdirSync, readdirSync, copyFileSync, statSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';

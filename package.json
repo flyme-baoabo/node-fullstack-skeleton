@@ -12,7 +12,6 @@
         "build:server": "tsc -p tsconfig.server.json && node scripts/build-server.js",
         "build:all": "npm run build:server && npm run build",
         "typecheck": "tsc --noEmit",
-        "start": "NODE_ENV=production node dist-server/index.js",
         "test": "tsx --test --test-concurrency=1",
         "test:watch": "tsx --test --watch"
     },
@@ -39,6 +38,7 @@
         "@types/express-ejs-layouts": "^2.5.4",
         "@types/node": "^26.2.0",
         "@types/supertest": "^7.2.1",
+        "cross-env": "^10.1.0",
         "concurrently": "^9.2.1",
         "jiti": "^2.7.0",
         "sass": "^1.102.0",
