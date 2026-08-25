@@ -1,9 +1,8 @@
 import dotenv from 'dotenv';
 import http from 'node:http';
-import express from 'express';
 import { createApp } from './app.js';
 import { mountRoutes } from './routes.js';
-import { clientDistDir } from './paths.js';
+import { serveStaticSpa } from './middleware/staticSpa.middleware.js';
 import { registerShutdown } from './runtime/shutdownRuntime.js';
 import { installProcessErrorGuard } from './runtime/processErrors.js';
 import { listenWithRetry } from './utils/listenWithRetry.js';
@@ -27,10 +26,10 @@ installProcessErrorGuard();
 async function main(): Promise<void> {
     const app = await createApp();
 
-    // 生产：Express 直连服务构建产物（dist-client）。
+    // 生产：Express 直连服务构建产物（dist-client），并对 /list 等深链做 SPA 兜底。
     // 开发（双端口架构）：前端资源由 Vite:5173 出（transform + HMR），其余请求经 proxy 转发回本服务，故不挂 static。
     if (isProd) {
-        app.use(express.static(clientDistDir));
+        app.use(serveStaticSpa());
     }
 
     const server = http.createServer(app);
