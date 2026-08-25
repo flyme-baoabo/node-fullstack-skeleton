@@ -113,7 +113,6 @@ npm run dev        # 同时启动后端(Express:BACKEND_PORT)，Vite 端口就�
 npm run dev:server # 仅启动后端
 npm run dev:client # 仅启动前端（Node 脚本：读 .env → 等 BACKEND_PORT → 拉 vite）
 npm run build      # 仅构建前端产物到 dist-client/
-npm start          # 生产模式：服务 dist-client 静态资源
 npm test           # 运行测试
 ```
 

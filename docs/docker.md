@@ -23,15 +23,22 @@ docker compose config > resolved.txt
 
 ## 2. 本地标准启动工作流
 
-### 0. 前置：把 `.env` 加载到当前 Shell（仅用于 YAML 插值，不灌入容器）
+### 0. 前置：环境变量从哪来（本地 `.env` vs 生产 CI 注入）
 
-> Mac / Linux 通用写法。也可以用 `docker compose --env-file .env` 显式指定，效果等价。
+> **本地**：compose 命令（`up` / `config`）会自动读取**当前目录的 `.env`** 做 `<VAR>` 占位插值，**无需**通过 `set -a && source .env && set +a` 手动加载进 Shell —— 那套在 run 命令里才会用到，这里直接用默认行为即可。想要显式指定就用 `--env-file .env`。
+>
+> **生产**：**不落 `.env` 文件**。运行期变量全部由 GitLab 后台 CI/CD Variables 注入，经 `deploy_prod` 阶段的 `ssh ... export` 传给远程 shell 再交给 compose。生产机上若调用 `source .env` 会因文件不存在而失败，故生产切勿使用。
 
 ```bash
-set -a
-source .env
-set +a
+# —— 本地（compose 自动读当前目录 .env 做插值，无需 source）——
+docker compose config            # 校验渲染结果（.env 缺失变量会显示空值/告警）
+docker compose up -d             # 启动
+# 如果 .env 不在当前目录，显式指定：
+docker compose --env-file .env config
+docker compose --env-file .env up -d
 ```
+
+> 💡 **生产注入替代品**：`deploy_prod` 阶段将 GitLab 后台变量经 `ssh ... export` 注入远程 shell 再传给 compose，全程不依赖 `.env` 文件。详见 `.gitlab-ci.yml`。
 
 ### 分场景启动
 
@@ -51,6 +58,12 @@ docker compose -f docker-compose.local.yml down
 
 # ---- 4. 彻底清空本地容器数据（测试重置使用，谨慎操作）----
 docker compose -f docker-compose.local.yml down -v
+
+# ---- 5. 查询容器里面的环境变量 ----
+docker ps
+# 使用上一步 找到的 NAMES 字段 替换 POD_NAME (下面2个都行)
+docker exec ${POD_NAME} printenv
+docker inspect ${POD_NAME} -f '{{range .Config.Env}}{{.}}{{"\n"}}{{end}}'
 ```
 
 ### 场景速查表
