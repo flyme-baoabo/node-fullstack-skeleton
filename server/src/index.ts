@@ -1,7 +1,6 @@
 import 'dotenv/config';
 import http from 'node:http';
 import express from 'express';
-import { createServer as createViteServer } from 'vite';
 import type { ViteDevServer } from 'vite';
 import { createApp } from './app.js';
 import { mountRoutes } from './routes.js';
@@ -11,7 +10,9 @@ import { installProcessErrorGuard } from './runtime/processErrors.js';
 import { listenWithRetry } from './utils/listenWithRetry.js';
 
 const isProd = process.env.NODE_ENV === 'production';
-const port = Number(process.env.SERVER_PORT) || 3000;
+// 生产环境固定监听 3000（与 Dockerfile 公开端口 / compose 内部端口强绑定）
+// 开发环境才读取 SERVER_PORT，便于本地灵活换端口
+const port = isProd ? 3000 : Number(process.env.SERVER_PORT) || 3000;
 
 // 进程级兜底：接管 unhandledRejection / uncaughtException，须在任何异步逻辑之前注册
 installProcessErrorGuard();
@@ -23,6 +24,8 @@ async function main(): Promise<void> {
 
     if (!isProd) {
         // 开发模式：把 Vite 作为 Express 中间件挂载，复用 HMR 管线
+        // 注意：vite 是 devDependency，生产镜像 --omit=dev 不会装它，必须在开发分支内动态导入
+        const { createServer: createViteServer } = await import('vite');
         devViteServer = await createViteServer({
             server: { middlewareMode: true, hmr: { server } as never },
             appType: 'custom',

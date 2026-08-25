@@ -36,7 +36,7 @@ services:
 
   postgres:
     image: postgres:16-alpine # 使用alpine轻量镜像，体积小适合本地开发
-    container_name: dev‑postgres # 固定容器名称，方便docker命令操作
+    container_name: prod-postgres # 固定容器名称，方便docker命令操作
     restart: always # 之前是 restart: unless‑stopped # 容器退出自动重启；手动stop才不会重启
     environment: # 服务级私有环境变量（仅数据库生效）
       # 全部从项目.env读取变量，yml不硬编码任何账号密码
@@ -62,7 +62,7 @@ services:
 
   redis:
     image: redis:7-alpine # redis7 轻量alpine镜像
-    container_name: dev‑redis
+    container_name: prod-redis
     restart: always # 之前是 restart: unless‑stopped
     # 启动redis服务并且设置全局密码，密码取自.env环境变量
     command: redis-server --requirepass ${REDIS_PASSWORD}
