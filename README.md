@@ -3,6 +3,8 @@
 前后端不分离小型项目：**Node + Express** 服务端渲染，**htmx** 提供前端交互能力，**Vite + Tailwind CSS** 负责前端构建与 HMR。
 
 > 💡 开发/提交/版本同步规范请看 [**docs/development-standards.md**](docs/development-standards.md)（GitHub 为主仓库、Gitee 为镜像的同步约定）。
+>
+> 💡 Docker 镜像构建 / 本地启停 / 日常运维命令请看 [**docs/docker.md**](docs/docker.md)。
 
 本工程是 **Express + Vite** 的实践项目，完整串起「后端 Express 渲染视图 + 前端 Vite 构建/HMR」的典型开发链路。
 
