@@ -13,7 +13,6 @@ import { listenWithRetry } from './utils/listenWithRetry.js';
 const isProd = process.env.NODE_ENV === 'production';
 
 if (!isProd) {
-    dotenv.config({ path: '.env', override: false });
     // 开发环境：读取 .env，加载到 process.env，不覆盖 已有的环境变量（例如 docker-compose.yml 注入的），避免覆盖掉 compose 注入的端口等配置
     dotenv.config({ path: '.env.development', override: false });
 }
