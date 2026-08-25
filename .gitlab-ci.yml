@@ -1,0 +1,57 @@
+stages:
+  - build
+  - deploy
+
+variables:
+  # 镜像前缀，推荐配置在GitLab后台CI环境变量，避免代码硬编码泄露
+  IMAGE_NAME: "harbor.mycorp.com/fullstack/my-app"
+  # Compose部署超时等待，保障服务健康就绪
+  COMPOSE_WAIT_TIMEOUT: "60"
+
+# ====================== 构建阶段（可复用模板） ======================
+# 构建阶段共用的Runner要求：标签 docker
+.build_base: &build_base
+  image: docker:latest
+  services:
+    - docker:dind
+  tags:
+    - docker
+
+# 镜像构建 & 推送阶段
+build_image:
+  <<: *build_base
+  stage: build
+  script:
+    # 先登录Harbor镜像仓库
+    - echo "$REGISTRY_PASSWORD" | docker login ${IMAGE_NAME%%/*} -u "$REGISTRY_USER" --password-stdin
+    # 镜像Tag使用完整Git Commit SHA，版本唯一可追溯
+    - docker build -t ${IMAGE_NAME}:${CI_COMMIT_SHA} .
+    - docker push ${IMAGE_NAME}:${CI_COMMIT_SHA}
+
+# 生产部署阶段
+deploy_prod:
+  stage: deploy
+  # 生产部署机器：需要提前配置好SSH免密
+  before_script:
+    - set +e
+    - command -v ssh-agent >/dev/null
+    - eval $(ssh-agent -s)
+    - echo "$DEPLOY_SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add - >/dev/null
+    - mkdir -p ~/.ssh && chmod 700 ~/.ssh
+    - ssh-keyscan "$DEPLOY_SERVER_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+  script:
+    # 通过SSH在生产服务器上执行部署
+    - >
+      ssh -o StrictHostKeyChecking=no root@${DEPLOY_SERVER_HOST} "
+        cd ${DEPLOY_PATH} &&
+        set -a &&
+        source .env &&
+        set +a &&
+        IMAGE_NAME=${IMAGE_NAME} CI_COMMIT_SHA=${CI_COMMIT_SHA} \
+        docker compose pull &&
+        IMAGE_NAME=${IMAGE_NAME} CI_COMMIT_SHA=${CI_COMMIT_SHA} \
+        docker compose up -d --wait --wait-timeout ${COMPOSE_WAIT_TIMEOUT}
+      "
+  # 仅main主干分支触发生产部署
+  only:
+    - main
