@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
 import { defineConfig } from 'vite';
 import tailwindcss from '@tailwindcss/vite';
 
@@ -6,9 +6,16 @@ import tailwindcss from '@tailwindcss/vite';
 // import { ASSET_EXT_RE } from './vite.constants.ts';
 // import { publicFileExists } from './vite.utils.ts';
 
-// env 驱动端口：VITE_PORT(前端默认5173)、BACKEND_PORT(代理目标/后端默认3006)
+// NODE_ENV 由【进程环境】决定（docker/cli 注入），不从 .env 读
+const isProd = process.env.NODE_ENV === 'production';
+
+if (!isProd) {
+    // 开发环境：读取 .env，加载到 process.env，不覆盖 已有的环境变量（例如 docker-compose.yml 注入的），避免覆盖掉 compose 注入的端口等配置
+    dotenv.config({ path: '.env.development', override: false });
+}
+// env 驱动端口：VITE_PORT(前端默认5173)、 SERVER_PORT(代理目标/后端默认3006)
 const vitePort = Number(process.env.VITE_PORT) || 5173;
-const backendPort = Number(process.env.BACKEND_PORT) || 3006;
+const serverPort = Number(process.env.SERVER_PORT) || 3006;
 
 let reqId = 0; // 用于给每个请求分配唯一 id，便于日志追踪
 
@@ -21,13 +28,13 @@ export default defineConfig({
     // 静态资源目录：Vite dev（middleware 模式）与 build 都会把它暴露/复制到站点根路径 /。
     // 开发模式双端口：
     //   - Vite 监听 VITE_PORT，是浏览器唯一入口
-    //   - '/' 代理把「页面 / 片段 / API」SSR 路由转发到 Express(BACKEND_PORT)
+    //   - '/' 代理把「页面 / 片段 / API」SSR 路由转发到 Express(SERVER_PORT)
     //   - bypass 语义（Vite 源码确认）：返回「原 url 字符串」= 交给 Vite 中间件 transform；返回 undefined = 代理到后端；返回 false = 直接 404（勿用）
     server: {
         port: vitePort,
         proxy: {
             // '/': {
-            //     target: `http://localhost:${backendPort}`,
+            //     target: `http://localhost:${serverPort}`,
             //     changeOrigin: true,
             //     // 属于 Vite 的模块资源：返回原 url 字符串 → 交由 Vite transform / HMR
             //     // 其余 SSR 页面路由：返回 undefined → 转发到 Express 后端
@@ -60,8 +67,8 @@ export default defineConfig({
             //         return url; // 交给 Vite
             //     },
             // },
-            '/api': { target: `http://localhost:${backendPort}`, changeOrigin: true },
-            '/page': { target: `http://localhost:${backendPort}`, changeOrigin: true },
+            '/api': { target: `http://localhost:${serverPort}`, changeOrigin: true },
+            '/page': { target: `http://localhost:${serverPort}`, changeOrigin: true },
         },
     },
     build: {
