@@ -39,5 +39,5 @@ RUN mkdir -p data
 
 # 安全规范：不使用root运行Node进程，使用官方普通node用户，规避容器权限风险
 USER node
-EXPOSE 3006
+EXPOSE 3000
 CMD ["node", "dist-server/index.js"]
