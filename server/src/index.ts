@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import http from 'node:http';
 import express from 'express';
 import { createServer as createViteServer } from 'vite';
@@ -10,7 +11,7 @@ import { installProcessErrorGuard } from './runtime/processErrors.js';
 import { listenWithRetry } from './utils/listenWithRetry.js';
 
 const isProd = process.env.NODE_ENV === 'production';
-const port = Number(process.env.PORT) || 3006;
+const port = Number(process.env.SERVER_PORT) || 3000;
 
 // 进程级兜底：接管 unhandledRejection / uncaughtException，须在任何异步逻辑之前注册
 installProcessErrorGuard();
