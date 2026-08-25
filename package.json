@@ -7,7 +7,7 @@
     "scripts": {
         "dev": "node --watch-path=server --watch-preserve-output --import tsx server/src/index.ts",
         "build": "vite build",
-        "build:server": "tsc -p tsconfig.server.json && node scripts/build-server.mjs",
+        "build:server": "tsc -p tsconfig.server.json && node scripts/build-server.js",
         "build:all": "npm run build:server && npm run build",
         "typecheck": "tsc --noEmit",
         "start": "NODE_ENV=production node dist-server/index.js",

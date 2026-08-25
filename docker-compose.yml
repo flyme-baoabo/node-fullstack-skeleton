@@ -1,9 +1,5 @@
 version: '3.8' # compose语法版本，3.8兼容绝大多数docker环境
 
-# ====================== 顶层全局环境变量（所有服务共享） ======================
-environment:
-  TZ: Asia/Shanghai
-
 # 自定义桥接网络，容器内部可使用服务名 postgres、redis作为host访问
 networks:
   app-network:

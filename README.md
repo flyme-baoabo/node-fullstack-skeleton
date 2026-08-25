@@ -55,7 +55,7 @@ project-root/                       # 当前仓库根目录（占位名，取决
 ├─ tsconfig.json                    # 全局 TS 基础配置（前后端共用）
 ├─ tsconfig.server.json             # 服务端 TS 独立编译配置
 ├─ scripts/
-│  └─ build-server.mjs              # 服务端编译后置处理脚本（拷贝 .ejs/.json 等静态资源）
+│  └─ build-server.js              # 服务端编译后置处理脚本（拷贝 .ejs/.json 等静态资源）
 ├─ .env                             # 本地环境变量（已 gitignore，不入库）
 ├─ .env.example                     # 环境变量模板
 ├─ docker-compose.yml               # 全局容器编排（仅中间件）

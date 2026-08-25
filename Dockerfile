@@ -1,10 +1,10 @@
 # 单镜像构建整个项目：
-#   - build:server  —— tsc 编译 TS → dist-server，build-server.mjs 把 .ejs/.json 等静态资源拷进 dist-server
+#   - build:server  —— tsc 编译 TS → dist-server，build-server.js 把 .ejs/.json 等静态资源拷进 dist-server
 #   - build         —— vite build 产出 dist-client（EJS 布局直接引用其中的 assets/main.js、assets/main.css）
 #
 # 说明：
 #   - i18n 字典（.json）经 const import 静态编译进 dist-server，运行阶段无需再拷；
-#   - EJS 视图由 build-server.mjs 自动从 server/src 复制进 dist-server/views，也无需单独 COPY。
+#   - EJS 视图由 build-server.js 自动从 server/src 复制进 dist-server/views，也无需单独 COPY。
 FROM node:20-alpine AS builder
 WORKDIR /app
 # 先装依赖，利用包缓存
@@ -29,11 +29,15 @@ ENV NODE_ENV=production
 # 只拷贝运行清单并安装运行时依赖（不含 dev），供后端 import express/ejs/i18next 等使用
 COPY package*.json ./
 RUN npm ci --omit=dev
-# 后端编译产物（含被 build-server.mjs 拷入的 views 静态资源）
+# 后端编译产物（含被 build-server.js 拷入的 views 静态资源）
 COPY --from=builder /app/dist-server ./dist-server
 # 前端构建产物，供后端静态托管 + EJS 布局引用
 COPY --from=builder /app/dist-client ./dist-client
 # 待办持久化数据目录（server.dataDir 默认指向项目根下 data）
 RUN mkdir -p data
+
+
+# 安全规范：不使用root运行Node进程，使用官方普通node用户，规避容器权限风险
+USER node
 EXPOSE 3006
 CMD ["node", "dist-server/index.js"]
