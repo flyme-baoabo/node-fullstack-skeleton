@@ -21,7 +21,9 @@ const serverPort = Number(process.env.SERVER_PORT) || 3000;
 
 // 该项目的角色：为服务端渲染的 Express 应用编译前端资源（htmx 入口、CSS）
 // - dev: 独立 dev server（双端口），把「SSR 页面路由」代理到 Express 后端，前端模块交给 Vite transform
-// - build: 产出固定命名的 assets，供 EJS 布局直接引用
+// - build: 产出固定名、无 contenthash 的产物供 EJS 布局写死引用：
+//   · JS → dist-client/js/main.js（entryFileNames）
+//   · CSS → dist-client/style.css（cssCodeSplit:false，assets 资源位于 assets目录）
 export default defineConfig({
     plugins: [tailwindcss()],
     appType: 'custom',
@@ -72,12 +74,12 @@ export default defineConfig({
             // 把 client/src/main.ts 作为唯一构建入口
             input: 'client/src/main.ts',
             output: {
-                //  产物平铺到 outDir 根：JS 进 js/，CSS 等资源放根目录
+                //  产物布局：JS 进 js/，CSS 等资源进 assets/ 子目录
                 entryFileNames: 'js/main.js',
                 // 与 entryFileNames / assetFileNames 一致：固定名、不带 contenthash，
                 // 保证文件名可预测、EJS 布局可直接写死引用（本项目无动态 import，实际不产出 chunk）
                 chunkFileNames: 'js/[name].js',
-                assetFileNames: '[name][extname]',
+                assetFileNames: 'assets/[name][extname]',
             },
         },
     },

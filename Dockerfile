@@ -1,6 +1,6 @@
 # 单镜像构建整个项目：
 #   - build:server  —— tsc 编译 TS → dist-server，build-server.js 把 .ejs/.json 等静态资源拷进 dist-server
-#   - build         —— vite build 产出 dist-client（EJS 布局直接引用其中的 assets/main.js、assets/main.css）
+#   - build         —— vite build 产出 dist-client（EJS 布局直接引用其中的 js/main.js、assets/style.css）
 #
 # 说明：
 #   - i18n 字典（.json）经 const import 静态编译进 dist-server，运行阶段无需再拷；
@@ -11,7 +11,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 # 拷贝构建所需源码与配置
-COPY tsconfig.base.json tsconfig.json tsconfig.server.json vite.config.ts ./
+COPY tsconfig.base.json tsconfig.json tsconfig.server.json vite.config.ts vite.constants.ts vite.utils.ts ./
 COPY server ./server
 COPY client ./client
 COPY scripts ./scripts

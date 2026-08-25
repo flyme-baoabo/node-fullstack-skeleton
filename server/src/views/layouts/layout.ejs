@@ -35,7 +35,7 @@
         <script type="module" src="/@vite/client"></script>
     <% } %>
 
-    <!-- 前端入口：htmx + 样式；开发模式走 Vite /client/src，生产模式走 /assets -->
+    <!-- 前端入口：htmx + 样式；开发模式走 Vite /client/src，生产模式走 js 目录 -->
     <script type="module" src="<%= isDev ? '/client/src/main.ts' : '/js/main.js' %>"></script>
     <script>
         // 把当前语言包序列化到 window.I18n，供客户端无感切换语言使用。
