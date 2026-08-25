@@ -59,12 +59,15 @@ export function notFoundHandler(req: Request, res: Response): void {
         method: req.method,
         url: req.originalUrl,
     });
-    const message = `Not Found - ${req.method} ${req.originalUrl}`;
-    if (isHtmxRequest(req) || prefersHtml(req)) {
+    const messageKey = 'errors.not_found';
+    const message = `${resolveMessage(req, messageKey)} - ${req.method} ${req.originalUrl}`;
+    const sendData = { code: 404, message, messageKey };
+    if (wantsHtml(req)) {
+        attachErrorHeaders(res, sendData);
         res.status(404).type('text').send(message);
         return;
     }
-    res.status(404).json({ code: 404, message });
+    res.status(404).json(sendData);
 }
 
 /**
@@ -100,10 +103,14 @@ export function errorHandler(
         const text = resolveMessage(req, err.messageKey, err.params);
         // 对 htmx / 浏览器导航返回纯文本片段，其余（fetch/API）返回 JSON；
         // 具体如何展示/渲染由前端监听 htmx 生命周期或读响应自行处理。
-        if (isHtmxRequest(req) || prefersHtml(req)) {
+        const sendData = { code: err.code ?? err.status, message: text, messageKey: err.messageKey };
+        if (wantsHtml(req)) {
+            attachErrorHeaders(res, sendData);
             res.status(err.status).type('text').send(text);
         } else {
-            res.status(err.status).json({ code: err.code ?? err.status, message: text });
+            // messageKey：让 API 调用方拿到「原 i18n key」做进一步本地化/路由判断；
+            // 无业务码/自由文案进来时它 == message，供前端兜底展示。
+            res.status(err.status).json(sendData);
         }
         return;
     }
@@ -126,11 +133,14 @@ export function errorHandler(
             status: parseErr.status,
             detail: parseErr.type,
         });
-        const text = resolveMessage(req, 'errors.bad_request');
-        if (isHtmxRequest(req) || prefersHtml(req)) {
+        const messageKey = 'errors.bad_request';
+        const text = resolveMessage(req, messageKey);
+        const sendData = { code: 400, message: text, messageKey };
+        if (wantsHtml(req)) {
+            attachErrorHeaders(res, sendData);
             res.status(parseErr.status).type('text').send(text);
         } else {
-            res.status(parseErr.status).json({ code: 400, message: text });
+            res.status(parseErr.status).json(sendData);
         }
         return;
     }
@@ -146,17 +156,37 @@ export function errorHandler(
         stack: e.stack,
     });
 
-    const text = resolveMessage(req, 'errors.internal_error');
-    if (isHtmxRequest(req) || prefersHtml(req)) {
+    const messageKey = 'errors.internal_error';
+    const text = resolveMessage(req, messageKey);
+    const sendData = { code: 500, message: text, messageKey };
+    if (wantsHtml(req)) {
+        attachErrorHeaders(res, sendData);
         res.status(500).type('text').send(text);
     } else {
-        res.status(500).json({ code: 500, message: text });
+        res.status(500).json(sendData);
     }
 }
 
 /**
+ * 为纯文本片段响应附加错误元信息头，供 htmx/fetch 在 responseError 里读取：
+ *   - X-Error-Code：数字业务码（与 JSON body 的 code 一致）；
+ *   - X-Error-Key：原始 i18n key（与 JSON body 的 messageKey 一致）。
+ * 特别适合 htmx 场景：htmx 默认把响应 body 直接作 DOM 片段，业务层拿不到 JSON body，
+ * 但可在 responseError 事件里 getResponseHeader 取到结构化元信息。
+ */
+function attachErrorHeaders(
+    res: Response,
+    sendData: { code: number; message: string; messageKey: string }
+): void {
+    const { code, message, messageKey } = sendData;
+    res.setHeader('X-Error-Code', String(code));
+    res.setHeader('X-Error-Message', message);
+    res.setHeader('X-Error-Key', messageKey);
+}
+
+/**
  * 把 messageKey 转成响应文案：
- *   - 若 message 是已注册的 i18n key → 命中 errors.* 结构，按当前语言翻译并插值后返回文案；
+ *   - 若 message 是已注册的 i18n key → 按当前语言翻译并插值后返回文案；
  *   - 否则（未注册 key / 自由文本）→ 原样透传。
  * @returns 响应用文案；若 req.t 在缺语言态下抛错则退化为传入的原始字符串。
  */
@@ -167,13 +197,6 @@ function resolveMessage(
 ): string {
     try {
         const resolved = params ? req.t(message, params) : req.t(message);
-        // 结构化 errors：命中后 t() 返回 { code, message } 对象，取其中的 message 文案
-        if (resolved && typeof resolved === 'object') {
-            const entry = resolved as { message?: unknown };
-            if (typeof entry.message === 'string') {
-                return entry.message;
-            }
-        }
         // 未命中 / 自由文本
         return typeof resolved === 'string' ? resolved : message;
     } catch {
@@ -181,12 +204,21 @@ function resolveMessage(
     }
 }
 
-/** 是否htmx请求（带 hx-request 头） */
-function isHtmxRequest(req: Request): boolean {
-    return !!req.headers['hx-request'];
+/**
+ * 客户端是否偏好 HTML 响应（据此决定纯文本片段 vs JSON）：
+ *   - htmx 事务（带 hx-request 头）→ 纯文本片段；htmx.ajax() 发起的请求同样带此头。
+ *   - 浏览器导航（Accept 含 text/html / application/xhtml+xml）→ 纯文本片段。
+ *   - fetch / 第三方 API / curl → JSON。
+ */
+function wantsHtml(req: Request): boolean {
+    return req.isHXRequest || prefersHtml(req);
 }
 
-/** 客户端是否偏好 HTML（浏览器导航 / htmx 片段） */
+/**
+ * 客户端是否偏好 HTML。仅看 Accept 头，不含 htmx 判定：
+ * 浏览器导航（直接访问 / 刷新）会带 text/html 或 application/xhtml+xml；
+ * fetch / curl 等则通常带通配类型或 application/json。应与 req.isHXRequest 配合判断响应形态。
+ */
 function prefersHtml(req: Request): boolean {
     const accept = String(req.headers.accept ?? '');
     return accept.includes('text/html') || accept.includes('application/xhtml+xml');
