@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
 import http from 'node:http';
 import express from 'express';
 import type { ViteDevServer } from 'vite';
@@ -9,7 +9,16 @@ import { registerShutdown } from './runtime/shutdownRuntime.js';
 import { installProcessErrorGuard } from './runtime/processErrors.js';
 import { listenWithRetry } from './utils/listenWithRetry.js';
 
+// NODE_ENV 由【进程环境】决定（docker/cli 注入），不从 .env 读
 const isProd = process.env.NODE_ENV === 'production';
+
+if (!isProd) {
+    dotenv.config({ path: '.env', override: false });
+    // 开发环境：读取 .env，加载到 process.env，不覆盖 已有的环境变量（例如 docker-compose.yml 注入的），避免覆盖掉 compose 注入的端口等配置
+    dotenv.config({ path: '.env.development', override: false });
+}
+// 生成 环境 CI注入 和 docker-compose.yml 注入，而且生成环境 也没有 .env 文件
+
 // 生产环境固定监听 3000（与 Dockerfile 公开端口 / compose 内部端口强绑定）
 // 开发环境才读取 SERVER_PORT，便于本地灵活换端口
 const port = isProd ? 3000 : Number(process.env.SERVER_PORT) || 3000;

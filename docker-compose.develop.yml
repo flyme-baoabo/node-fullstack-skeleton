@@ -25,7 +25,7 @@ services:
       # 👉左侧5432：本机宿主机暴露端口，供宿主机上Node/Navicat/DBeaver访问容器数据库
       # ⚠️重要：compose ports属于Docker网络映射配置，不会自动读取.env的DB_PORT，两套配置不会自动同步
       # 如果修改左侧宿主机端口，必须同步修改.env中的 DB_PORT，否则业务驱动连接失败
-      - "${DB_PORT}:5432"
+      - "127.0.0.1:${DB_PORT}:5432"
     volumes:
       - pg-prod-data:/var/lib/postgresql/data
     networks:
@@ -48,7 +48,7 @@ services:
       # 👉左侧6379：本机宿主机暴露端口，供宿主机Node、redis客户端访问
       # ⚠️重要：compose ports不会自动读取.env的REDIS_PORT，两套配置相互独立，无自动同步
       # 如果改动左侧宿主机端口，需要同步修改.env中 REDIS_PORT，否则ioredis驱动连接失败
-      - "${REDIS_PORT}:6379"
+      - "127.0.0.1:${REDIS_PORT}:6379"
     volumes:
       - redis-prod-data:/data
     networks:
