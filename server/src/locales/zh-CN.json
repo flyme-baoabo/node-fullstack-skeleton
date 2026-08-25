@@ -53,15 +53,15 @@
         "get_current_language_failed": "获取当前语言包失败，请稍后重试"
     },
     "errors": {
-        "todo_empty":       { "code": 40001, "message": "待办内容不能为空！" },
-        "invalid_id":       { "code": 40002, "message": "无效的待办编号" },
-        "unsupported_lang": { "code": 40003, "message": "不支持的语言：{{lang}}" },
-        "toggle_not_found": { "code": 40401, "message": "要切换的待办不存在或已被删除" },
-        "remove_not_found": { "code": 40402, "message": "要删除的待办不存在或已被删除" },
-        "create_failed":    { "code": 50001, "message": "新增待办失败，请稍后重试" },
-        "remove_failed":    { "code": 50002, "message": "删除待办失败，请稍后重试" },
-        "bad_request":      { "code": 400,   "message": "请求格式有误" },
-        "not_found":        { "code": 404,   "message": "资源不存在" },
-        "internal_error":   { "code": 500,   "message": "服务器开小差了，请稍后再试" }
+        "todo_empty": "待办内容不能为空！",
+        "invalid_id": "无效的待办编号",
+        "unsupported_lang": "不支持的语言：{{lang}}",
+        "toggle_not_found": "要切换的待办不存在或已被删除",
+        "remove_not_found": "要删除的待办不存在或已被删除",
+        "create_failed": "新增待办失败，请稍后重试",
+        "remove_failed": "删除待办失败，请稍后重试",
+        "bad_request": "请求格式有误",
+        "not_found": "资源不存在",
+        "internal_error": "服务器开小差了，请稍后再试"
     }
 }

@@ -53,15 +53,15 @@
         "get_current_language_failed": "Failed to load current language, please try again later"
     },
     "errors": {
-        "todo_empty":       { "code": 40001, "message": "The to-do item cannot be empty!" },
-        "invalid_id":       { "code": 40002, "message": "Invalid to-do id" },
-        "unsupported_lang": { "code": 40003, "message": "Unsupported language: {{lang}}" },
-        "toggle_not_found": { "code": 40401, "message": "To-do to toggle not found or already deleted" },
-        "remove_not_found": { "code": 40402, "message": "To-do to remove not found or already deleted" },
-        "create_failed":    { "code": 50001, "message": "Failed to create to-do, please try again later" },
-        "remove_failed":    { "code": 50002, "message": "Failed to delete to-do, please try again later" },
-        "bad_request":      { "code": 400,   "message": "Malformed request body" },
-        "not_found":        { "code": 404,   "message": "Resource not found" },
-        "internal_error":   { "code": 500,   "message": "Internal server error, please try again later" }
+        "todo_empty": "The to-do item cannot be empty!",
+        "invalid_id": "Invalid to-do id",
+        "unsupported_lang": "Unsupported language: {{lang}}",
+        "toggle_not_found": "To-do to toggle not found or already deleted",
+        "remove_not_found": "To-do to remove not found or already deleted",
+        "create_failed": "Failed to create to-do, please try again later",
+        "remove_failed": "Failed to delete to-do, please try again later",
+        "bad_request": "Malformed request body",
+        "not_found": "Resource not found",
+        "internal_error": "Internal server error, please try again later"
     }
 }
