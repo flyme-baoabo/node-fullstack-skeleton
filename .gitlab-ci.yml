@@ -10,7 +10,7 @@ variables:
   # 必须由 GitLab 后台 CI/CD Variables 配置的变量（缺失时 fail-fast）
   # 涵盖 CI/CD 基建 + docker-compose 运行期（compose 实际引用）全量变量
   REQUIRED_CI_VARS: "REGISTRY_USER REGISTRY_PASSWORD DEPLOY_SERVER_HOST DEPLOY_PATH DEPLOY_SSH_PRIVATE_KEY \
-    SERVER_PORT VITE_PORT DB_USER DB_PASSWORD DB_NAME DB_HOST \
+    SERVER_PORT DB_USER DB_PASSWORD DB_NAME DB_HOST \
     DB_POOL_MAX DB_IDLE_TIMEOUT_MS DB_CONNECTION_TIMEOUT_MS \
     REDIS_PASSWORD NODE_ENV COMPOSE_WAIT_TIMEOUT"
 
@@ -61,7 +61,7 @@ deploy_prod:
     - mkdir -p ~/.ssh && chmod 700 ~/.ssh
     - ssh-keyscan "$DEPLOY_SERVER_HOST" >> ~/.ssh/known_hosts 2>/dev/null
     # 生产机不落 .env 文件：compose 所需的插值变量由 CI 后台注入，经远程 shell export 提供
-    # 注意：只 export compose 真正 ${...} 插值的变量；VITE_PORT / DB_HOST / DB_PORT / 连接池 / REDIS_HOST/REDIS_PORT 等
+    # 注意：只 export compose 真正 ${...} 插值的变量；VITE_PORT / DB_HOST / DB_PORT / REDIS_HOST/REDIS_PORT 等
     #       未被 docker-compose.yml 引用，无需导出（导出也不会有任何效果）
     - >
       ssh -o StrictHostKeyChecking=no root@${DEPLOY_SERVER_HOST} "
