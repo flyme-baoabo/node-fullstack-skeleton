@@ -1,6 +1,7 @@
 import { handleConfirm } from './confirm';
 import { showToast, ToastVariant } from './toast';
 import { t } from './i18n';
+import { logger } from './utils/logger';
 /**
  * HTMX 2.x 完整生命周期事件（权威定稿·生产无坑全覆盖）
  * 对齐官方源码 + 生产踩坑修正 + 全特殊状态码规则 + 422专属特例
@@ -106,6 +107,19 @@ export function mountHtmxLifecycle(): void {
         return String(xhr.status);
     }
 
+    /** 把 XHR 错误标准化成结构化 meta，供 logger.error 使用：status + 可读 message + 错误详情。 */
+    const errorMeta = (detail: {
+        xhr: XMLHttpRequest;
+        error: Error;
+    }): Record<string, unknown> => {
+        const { xhr, error } = detail;
+        return {
+            status: xhr.status,
+            message: extractErrorMessage(xhr),
+            error: error instanceof Error ? error.message : String(error || 'unknown'),
+        };
+    }
+
     /** beforeRequest 阶段：请求即将发起。错误反馈改用全局 toast，无需清空容器；loading 靠 hx-indicator。 */
     document.body.addEventListener('htmx:beforeRequest', (event: Event) => {
         const detail = (event as CustomEvent).detail as { elt: HTMLElement };
@@ -124,7 +138,7 @@ export function mountHtmxLifecycle(): void {
             xhr: XMLHttpRequest;
             error: Error;
         };
-        console.error(`[htmx] send failed`, detail.xhr, detail.error);
+        logger.error('网络请求失败', errorMeta(detail));
         showToast(t('toast.network_error'), ToastVariant.Error);
     });
 
@@ -155,7 +169,7 @@ export function mountHtmxLifecycle(): void {
         };
         // 兜底过滤：万一 422 仍到这里（配置差异）也静默，不弹全局 toast
         if (detail.xhr.status === 422) return;
-        console.error(`[htmx] ${detail.xhr.status} ${detail.xhr.responseText}`, detail.xhr);
+        logger.error('htmx responseError', errorMeta(detail));
         showToast(
             t('toast.request_failed', {
                 status: detail.xhr.status,
@@ -170,8 +184,8 @@ export function mountHtmxLifecycle(): void {
 
     /** swapError 阶段：DOM 替换失败（多为 2xx 但 HTML 解析/渲染异常），走不到 afterSwap/afterSettle，直接弹 toast 提示。 */
     document.body.addEventListener('htmx:swapError', (event: Event) => {
-        const detail = (event as CustomEvent).detail as { xhr: XMLHttpRequest };
-        console.error(`[htmx] swap failed`, detail.xhr);
+        const detail = (event as CustomEvent).detail as { xhr: XMLHttpRequest; error: Error };
+        logger.error('htmx swap failed', errorMeta(detail));
         showToast(t('toast.swap_failed'), ToastVariant.Error);
     });
 
