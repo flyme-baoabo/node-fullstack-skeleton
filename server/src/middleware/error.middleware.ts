@@ -100,6 +100,19 @@ export function errorHandler(
     // 响应状态码一律取 `err.status`，数字业务码取 `err.code`，不做 4xx/5xx 之分的特判。
     // 响应形态按请求类型：htmx / 浏览器导航 → 纯文本片段；fetch（API）→ JSON。
     if (err instanceof HttpError) {
+        // 业务错误（含 controller 直接 throw 的 400/404/500）：此分支此前不记日志，
+        // 导致 4xx 输入校验错误在 Docker Logs 里静默。这里统一补一条结构化日志。
+        // 分级：5xx（服务端故障）走 error，4xx（客户端输入、未命中资源等）走 warn。
+        const meta = {
+            requestId: req.id,
+            method: req.method,
+            url: req.originalUrl,
+            status: err.status,
+            code: err.code,
+            messageKey: err.messageKey,
+        };
+        logger[err.status >= 500 ? 'error' : 'warn']('[http-error]', meta);
+
         const text = resolveMessage(req, err.messageKey, err.params);
         // 对 htmx / 浏览器导航返回纯文本片段，其余（fetch/API）返回 JSON；
         // 具体如何展示/渲染由前端监听 htmx 生命周期或读响应自行处理。

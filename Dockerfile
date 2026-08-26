@@ -20,8 +20,12 @@ COPY tsconfig.base.json tsconfig.json tsconfig.server.json ./
 COPY server ./server
 COPY client ./client
 COPY scripts ./scripts
-# 同时编译后端 + 构建前端（产出 dist-server 与 dist-client）
-RUN npm run build:all
+# 同时编译后端 + 构建前端（产出 dist-server 与 dist-client）。
+# mode 由 Docker build 时经 ARG MODE 注入（命中 build 时间）：
+#   docker build --build-arg MODE=development …
+# 默认 production（vite build 默认即 production，无 sourcemap）。
+ARG MODE=production
+RUN npm run build:server && npx vite build --mode $MODE
 
 # ——— 运行阶段：全新的空白镜像，只保留「能跑起来的东西」———
 #   · 首个 FROM 阶段（builder）里的源码、devDependencies、node_modules 全部带不到这里，
@@ -39,7 +43,9 @@ COPY --from=builder /app/dist-server ./dist-server
 # 前端构建产物（index.html/js/css），供后端 express.static(dist-client) 静态托管
 COPY --from=builder /app/dist-client ./dist-client
 # 待办持久化数据目录（server.dataDir 默认指向项目根下 data）
-RUN mkdir -p data
+# 必须 chown 给 node（uid 1000）：下面会切 USER node 以非 root 运行，若不授权，
+# node 用户对 root 属主的 data 目录没有写权限，落盘 todos.json 会抛 EACCES。
+RUN mkdir -p data && chown -R node:node data
 
 
 # 安全规范：不使用root运行Node进程，使用官方普通node用户，规避容器权限风险
