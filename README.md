@@ -68,12 +68,12 @@ project-root/                       # 当前仓库根目录（占位名，取决
 
 开发模式采用**双端口双进程**架构：
 
-- **后端 Express**：端口由 `BACKEND_PORT` 控制（缺省 `3006`），渲染 EJS、提供 `/api/*` 与 htmx 局部片段，并托管构建产物静态资源
+- **后端 Express**：端口由 `SERVER_PORT` 控制（缺省 `3006`），渲染 EJS、提供 `/api/*` 与 htmx 局部片段，并托管构建产物静态资源
 - **前端 Vite**：端口由 `VITE_PORT` 控制（缺省 `5173`），浏览器唯一入口；开发时通过 `server.proxy['/']` + `bypass` 函数把「SSR 页面路由」转发到 Express（Express 做 SSR 与接口），而 `/@vite/client`、`/client/src/*.(ts|css|scss)` 等前端模块请求交给 Vite 自身完成 transform + HMR
 
 `server/src/index.ts` 不再以 middleware 方式加载 Vite，Node(Express) 只做后端、不负责启动前端开发进程。
 
-> 当前 `package.json` 中的 `dev:client` 脚本是 `wait-on tcp:0.0.0.0:3006 && vite`：也就是说，Vite 自身端口仍由 `VITE_PORT` 驱动，但它会先等待 `3006` 端口上的后端就绪后再启动。因此若修改 `BACKEND_PORT`，也需要同步调整该脚本中的等待端口。
+> 当前 `package.json` 中的 `dev:client` 脚本是 `wait-on tcp:0.0.0.0:3006 && vite`：也就是说，Vite 自身端口仍由 `VITE_PORT` 驱动，但它会先等待 `3006` 端口上的后端就绪后再启动。因此若修改 `SERVER_PORT`，也需要同步调整该脚本中的等待端口。
 
 ### Vite 代理分流：`proxy` + `bypass`
 
@@ -124,14 +124,34 @@ appType: 'custom',
 
 ```bash
 npm install        # 首次安装依赖（含 dotenv）
-npm run dev        # 同时启动后端(Express:BACKEND_PORT)，Vite 端口就绪后再拉起
+npm run dev        # 同时启动后端(Express:SERVER_PORT)，Vite 端口就绪后再拉起
 npm run dev:server # 仅启动后端
 npm run dev:client # 仅启动前端（先等待默认后端 3006 端口就绪，再启动 vite）
-npm run build      # 仅构建前端产物到 dist-client/
+npm run build:client     # 仅构建前端产物到 dist-client/（js/main.js + assets/style.css），生产模式（无 sourcemap）
+npm run build:client:dev # 同上，但用 --mode development 构建，产物带 sourcemap 便于调试
+npm run build:server     # 编译后端到 dist-server/（tsc + 拷贝 .ejs/.json 等静态资源）
+npm run build:all        # 前后端一起构建（build:server && build:client）
 npm test           # 运行测试
 ```
 
 > `npm run dev` 由 `concurrently -k` 并发拉起两个进程。当前 `dev:client` 直接使用 `wait-on tcp:0.0.0.0:3006 && vite` 等待默认后端端口可用后再启动 Vite，因此开发时浏览器访问 **http://localhost:${VITE_PORT}**；Express 由 `node --watch-path=server` 在文件变更时自行重启，Vite 由自己的 dev server 做前端热更。
+### Docker 构建时动态注入 mode
+
+镜像里若要走调试构建（带 sourcemap），通过 `Dockerfile` 的 `ARG MODE` 在 build 时注入（默认 `production`）：
+
+- **直接 `docker build`**：
+
+  ```bash
+  docker build -t node-fullstack-skeleton --build-arg MODE=development .
+  ```
+
+- **经 `docker-compose.local.yml`（`up -d --build`）**：`build.args.MODE` 已从环境变量/machine 插值，临时导出一个即可：
+
+  ```bash
+  MODE=development docker compose -f docker-compose.local.yml up -d --build
+  ```
+
+不传/不设 `MODE` 即生产镜像（无 sourcemap）。详见 [`docs/docker.md`](docs/docker.md)。
 
 ### 开发态进程生命周期（退场 / 入场）
 
