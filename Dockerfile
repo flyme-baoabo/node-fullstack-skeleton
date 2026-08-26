@@ -38,7 +38,9 @@ COPY --from=builder /app/dist-server ./dist-server
 # 前端构建产物，供后端静态托管 + EJS 布局引用
 COPY --from=builder /app/dist-client ./dist-client
 # 待办持久化数据目录（server.dataDir 默认指向项目根下 data）
-RUN mkdir -p data
+# 必须 chown 给 node（uid 1000）：下面会切 USER node 以非 root 运行，若不授权，
+# node 用户对 root 属主的 data 目录没有写权限，落盘 todos.json 会抛 EACCES。
+RUN mkdir -p data && chown -R node:node data
 
 
 # 安全规范：不使用root运行Node进程，使用官方普通node用户，规避容器权限风险
