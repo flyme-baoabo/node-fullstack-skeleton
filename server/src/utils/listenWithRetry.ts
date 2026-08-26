@@ -1,4 +1,5 @@
 import type http from 'node:http';
+import { logger } from './logger.js';
 
 /**
  * listen 重试策略。
@@ -54,7 +55,7 @@ export function listenWithRetry(
             server.off('listening', handleListening);
             if (err?.code === 'EADDRINUSE') {
                 if (attempt >= maxRetries) {
-                    console.error(`端口 ${port} 在重试 ${maxRetries} 次后仍被占用，停止重试并退出。`);
+                    logger.error(`端口 ${port} 在重试 ${maxRetries} 次后仍被占用，停止重试并退出。`);
                     process.exit(1);
                 }
 
@@ -65,12 +66,13 @@ export function listenWithRetry(
                 attempt = nextAttempt;
 
                 // 旧进程还没完全退场：等端口释放后再重试本次 server.listen。
-                console.warn(
-                    `端口 ${port} 仍被占用，第 ${nextAttempt}/${maxRetries} 次重试将在 ${delayMs}ms 后进行…`
-                );
+                logger.warn(`端口 ${port} 仍被占用，第 ${nextAttempt}/${maxRetries} 次重试将在 ${delayMs}ms 后进行…`);
                 setTimeout(retry, delayMs);
             } else {
-                console.error(err);
+                logger.error('listen 失败', {
+                    code: err?.code,
+                    message: err?.message,
+                });
                 process.exit(1);
             }
         };

@@ -6,6 +6,7 @@ import { mountRoutes } from './routes.js';
 import { clientDistDir } from './paths.js';
 import { registerShutdown } from './runtime/shutdownRuntime.js';
 import { installProcessErrorGuard } from './runtime/processErrors.js';
+import { logger } from './utils/logger.js';
 import { listenWithRetry } from './utils/listenWithRetry.js';
 
 // NODE_ENV 由【进程环境】决定（docker/cli 注入），不从 .env 读
@@ -38,7 +39,7 @@ async function main(): Promise<void> {
 
     // 带自动重试的 listen，遇端口占用稍等后自愈，消灭随机 EADDRINUSE（见 utils/listenWithRetry.ts）
     listenWithRetry(server, port, () => {
-        console.log(`Node Server backend → http://localhost:${port} (${isProd ? 'production' : 'dev'})`);
+        logger.info(`Node Server backend → http://localhost:${port}`, { env: isProd ? 'production' : 'dev' });
     });
 
     // 把退场逻辑注册到 SIGTERM / SIGINT，收到信号时尽快释放 server（Vite 已独立，由 concurrently 统一管理）
@@ -46,6 +47,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((err) => {
-    console.error(err);
+    logger.error('Start Failed', { error: err instanceof Error ? err.message : String(err) });
     process.exit(1);
 });

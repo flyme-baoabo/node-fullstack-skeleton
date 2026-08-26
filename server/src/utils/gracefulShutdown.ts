@@ -1,5 +1,6 @@
 import type http from 'node:http';
 import type net from 'node:net';
+import { logger } from './logger.js';
 
 export const SHUTDOWN_SIGNALS = ['SIGTERM', 'SIGINT'] as const;
 
@@ -57,21 +58,23 @@ export function createGracefulShutdown({
             // - closeAppTimer 先到点：先 resolve，shutdown 不再继续等 closeApp
             const closeAppPromise = closeApp
                 ? new Promise<void>((resolve) => {
-                      const closeAppTimer = setTimeout(() => {
-                          console.warn(`closeApp did not finish within ${closeAppTimeoutMs}ms; continuing shutdown`);
-                          resolve();
-                      }, closeAppTimeoutMs);
-                      closeAppTimer.unref();
+                    const closeAppTimer = setTimeout(() => {
+                        logger.warn('closeApp did not finish in time; continuing shutdown', { closeAppTimeoutMs });
+                        resolve();
+                    }, closeAppTimeoutMs);
+                    closeAppTimer.unref();
 
-                      void closeApp()
-                          .catch((err) => {
-                              console.warn('closeApp failed during graceful shutdown', err);
-                          })
-                          .finally(() => {
-                              clearTimeout(closeAppTimer);
-                              resolve();
-                          });
-                  })
+                    void closeApp()
+                        .catch((err) => {
+                            logger.warn('closeApp failed during graceful shutdown', {
+                                message: err instanceof Error ? err.message : String(err),
+                            });
+                        })
+                        .finally(() => {
+                            clearTimeout(closeAppTimer);
+                            resolve();
+                        });
+                })
                 : Promise.resolve();
 
             const closeServerPromise = new Promise<void>((resolve, reject) => {
@@ -92,7 +95,10 @@ export function createGracefulShutdown({
             process.exit(0);
         } catch (err) {
             clearTimeout(forceExitTimer);
-            console.error(`graceful shutdown failed on ${signal}`, err);
+            logger.error('Graceful shutdown failed', {
+                signal,
+                message: err instanceof Error ? err.message : String(err),
+            });
             for (const socket of sockets) socket.destroy();
             process.exit(1);
         }
