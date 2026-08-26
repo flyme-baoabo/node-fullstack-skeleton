@@ -69,14 +69,35 @@ project-root/                       # 当前仓库根目录（占位名，取决
 开发模式使用 **Vite 中间件模式**：Vite 以 middleware 形式嵌入 Node 进程，两者**同一端口、同一进程**，天然同源，前端资源经 Vite 热更新，后端改造由 `node --watch` 重启。
 
 ```bash
-npm install        # 首次安装依赖
-npm run dev        # 同时启动后端(Express:3000) + 前端(Vite HMR)
-npm run build      # 仅构建前端产物到 dist-client/
-npm start          # 生产模式：服务 dist-client 静态资源
-npm test           # 运行测试
+npm install              # 首次安装依赖
+npm run dev              # 同时启动后端(Express:3000) + 前端(Vite HMR)
+npm run build:client     # 仅构建前端产物到 dist-client/（js/main.js + assets/style.css），生产模式（无 sourcemap）
+npm run build:client:dev # 同上，但用 --mode development 构建，产物带 sourcemap 便于调试
+npm run build:server     # 编译后端到 dist-server/（tsc + 拷贝 .ejs/.json 等静态资源）
+npm run build:all        # 前后端一起构建（build:server && build:client）
+npm test                 # 运行测试
 ```
 
 > `npm run dev` = Node + Vite **一条命令同时启动**，无需 `vite` 与 `node` 分开启动。
+> `vite.config.ts` 采用 `defineConfig(({ mode }) => …)` 函数形式，`build.sourcemap` 按 `mode` 决定：`production` 关闭、其余开启。`build:client` 显式 `--mode production`，`build:client:dev` 用 `--mode development`。
+
+### Docker 构建时动态注入 mode
+
+镜像里若要走调试构建（带 sourcemap），通过 `Dockerfile` 的 `ARG MODE` 在 build 时注入（默认 `production`）：
+
+- **直接 `docker build`**：
+
+  ```bash
+  docker build -t node-fullstack-skeleton --build-arg MODE=development .
+  ```
+
+- **经 `docker-compose.local.yml`（`up -d --build`）**：`build.args.MODE` 已从环境变量/machine 插值，临时导出一个即可：
+
+  ```bash
+  MODE=development docker compose -f docker-compose.local.yml up -d --build
+  ```
+
+不传/不设 `MODE` 即生产镜像（无 sourcemap）。详见 [`docs/docker.md`](docs/docker.md)。
 
 ### 开发态进程生命周期（退场 / 入场）
 

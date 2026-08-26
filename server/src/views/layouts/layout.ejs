@@ -34,8 +34,8 @@
         <script type="module" src="/@vite/client"></script>
     <% } %>
 
-    <!-- 前端入口：htmx + 样式；开发模式走 Vite /client/src，生产模式走 /assets -->
-    <script type="module" src="<%= isDev ? '/client/src/main.ts' : '/assets/main.js' %>"></script>
+    <!-- 前端入口：htmx + 样式；开发模式走 Vite /client/src，生产模式走 /js -->
+    <script type="module" src="<%= isDev ? '/client/src/main.ts' : '/js/main.js' %>"></script>
     <script>
         // 把当前语言包序列化到 window.I18n，供客户端无感切换语言使用。
         // 转义标签 "左角+减号" 输出未转义 JSON；i18nJson 缺失时兜底空对象，避免 window.I18n = ; 语法错误。
