@@ -124,7 +124,7 @@ appType: 'custom',
 
 ```bash
 npm install        # 首次安装依赖（含 dotenv）
-npm run dev        # 同时启动后端(Express:SERVER_PORT)，Vite 端口就绪后再拉起
+npm run dev        # 同时启动后端(Express:SERVER_PORT)，Vite等 后端 服务就绪后再拉起
 npm run dev:server # 仅启动后端
 npm run dev:client # 仅启动前端（先等待默认后端 3006 端口就绪，再启动 vite）
 npm run build:client     # 仅构建前端产物到 dist-client/（js/main.js + assets/style.css），生产模式（无 sourcemap）
