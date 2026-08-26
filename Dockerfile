@@ -25,7 +25,7 @@ COPY scripts ./scripts
 #   docker build --build-arg MODE=development …
 # 默认 production（vite build 默认即 production，无 sourcemap）。
 ARG MODE=production
-RUN npm run build:server && npx vite build --mode $MODE
+RUN npm run build:all
 
 # ——— 运行阶段：全新的空白镜像，只保留「能跑起来的东西」———
 #   · 首个 FROM 阶段（builder）里的源码、devDependencies、node_modules 全部带不到这里，

@@ -1,0 +1,52 @@
+# 开发专用 Dockerfile（带 sourcemap，便于浏览器 DevTools 调试）
+#
+# 与生产 Dockerfile 的差异：
+#   - ARG MODE 默认 development：vite build 产物带 .map（DevTools 可看原始 TS 源码）
+#   - 前端构建用 `cd client && npx vite build --mode $MODE --outDir ../dist-client`
+#     （等价 scripts/build-client.js；生产版用 build:all 无 sourcemap）
+#
+# SPA 单端口运行时形态（唯一进程 node dist-server/index.js 承担全部）：
+#   · express.static(dist-client)  托管 index.html / js / assets 静态资源
+#   · /api/*、/page/*              后端路由（业务接口 + 页面路由/片段渲染）
+FROM node:20-alpine AS builder
+WORKDIR /app
+# 先装依赖，利用包缓存
+COPY package*.json ./
+RUN npm ci
+# 拷贝根级配置与源码目录
+COPY tsconfig.base.json tsconfig.json tsconfig.server.json ./
+COPY server ./server
+COPY client ./client
+COPY scripts ./scripts
+# 编译后端 + 构建前端（产出 dist-server 与 dist-client）。
+# mode 由 Docker build 时经 ARG MODE 注入：
+#   docker build -f Dockerfile.dev --build-arg MODE=development …
+#   docker compose -f docker-compose.local.yml up -d --build   （compose 内 dockerfile: Dockerfile.dev）
+RUN npm run build:server
+# 前端构建：
+#   1) 先用 cd client 把工作目录切到前端根（否则 vite build 相对 cwd 解析 input: index.html 会找不到入口）
+#   2) 用 CLI 命令行参数 --mode / --outDir 替代 scripts/build-client.js 的作用：
+#      · --mode $MODE          等于脚本里 buildConfig.mode（受 ARG MODE 控制：development 带 sourcemap）
+#      · --outDir ../dist-client 等于脚本里 path.resolve(rootDir,'./dist-client')（产物落项目根 dist-client）
+ARG MODE=development
+RUN cd client && npx vite build --mode $MODE --outDir ../dist-client
+
+# ——— 运行阶段：全新空白镜像，只保留运行所需的产物 ———
+#   · builder 里的源码、devDependencies 都带不到这里，重新 npm ci --omit=dev 安装运行依赖
+FROM node:20-alpine
+WORKDIR /app
+ENV NODE_ENV=production
+# 只拷贝运行清单并安装运行时依赖（不含 dev）
+COPY package*.json ./
+RUN npm ci --omit=dev
+# 后端编译产物（含被 build-server.js 拷入的 views 静态资源）
+COPY --from=builder /app/dist-server ./dist-server
+# 前端构建产物（index.html/js/css + .map sourcemap）
+COPY --from=builder /app/dist-client ./dist-client
+# 待办持久化数据目录，授权给 node 用户（否则落盘 todos.json 会 EACCES）
+RUN mkdir -p data && chown -R node:node data
+
+# 安全规范：不使用 root 运行 Node
+USER node
+EXPOSE 3000
+CMD ["node", "dist-server/index.js"]
