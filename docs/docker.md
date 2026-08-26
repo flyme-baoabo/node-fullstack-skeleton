@@ -53,6 +53,10 @@ docker compose -f docker-compose.develop.yml up -d
 #    fullstack-app 含 build: .，用 --build 基于本地 Dockerfile 构建镜像
 docker compose -f docker-compose.local.yml up -d --build
 
+#     默认按生产 mode 构建（vite build 无 sourcemap）。
+#     需要带调试信息（sourcemap）时，临时注入 MODE 构建参数：
+MODE=development docker compose -f docker-compose.local.yml up -d --build
+
 # ---- 3. 停止本地全容器模拟生产环境（保留数据卷）----
 docker compose -f docker-compose.local.yml down
 

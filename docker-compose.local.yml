@@ -12,7 +12,12 @@ volumes:
 services:
   fullstack-app:
     # 本地部署Docker环境：使用本地Dockerfile构建镜像
-    build: .
+    # MODE 构建参数：默认 production（vite build 无 sourcemap）；
+    # 需要调试镜像时，在构建命令前临时导出 MODE=development，或写进 .env：MODE=development
+    build:
+      context: .
+      args:
+        MODE: ${MODE:-production}
     ports:
       - "${SERVER_PORT}:3000"
     # 服务级环境变量（仅Node业务生效）
