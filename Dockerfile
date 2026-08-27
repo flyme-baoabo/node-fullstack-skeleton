@@ -5,7 +5,10 @@
 # 说明：
 #   - i18n 字典（.json）经 const import 静态编译进 dist-server，运行阶段无需再拷；
 #   - EJS 视图由 build-server.js 自动从 server/src 复制进 dist-server/views，也无需单独 COPY。
-FROM node:20-alpine AS builder
+# 基础镜像源前缀：Gitee 执行机访问 Docker Hub 常超时，默认改用国内可访问镜像源。
+# 如需还原官方源：docker build --build-arg BASE_IMAGE=node:20-alpine …
+ARG BASE_IMAGE=registry.aliyuncs.com/library/node:20‑alpine
+FROM ${BASE_IMAGE} AS builder
 WORKDIR /app
 # 先装依赖，利用包缓存
 COPY package*.json ./
@@ -23,11 +26,11 @@ ARG MODE=production
 RUN npm run build:server && npx vite build --mode $MODE
 
 # ——— 运行阶段：全新的空白镜像，只保留「能跑起来的东西」———
-#   · 首个 FROM 阶段（builder）里的源码、devDependencies、node_modules 全部带不到这里，
+#   · 首个 FROM（builder）阶段的源码、devDependencies、node_modules 全部带不到这里，
 #     新阶段从干净的 node:20-alpine 重新开始，仅通过 COPY --from=builder 取回两个产物。
 #   · node_modules 不是拷贝来的，而是重新 npm ci --omit=dev 安装得到的：
-#     单独装运行依赖，跳过 tsc/vite/tsx 等 devDependencies，让最终镜像更小。
-FROM node:20-alpine
+#     单独装运行依赖，跳过 devDependencies，让最终镜像更小。
+FROM ${BASE_IMAGE}
 WORKDIR /app
 ENV NODE_ENV=production
 # 只拷贝运行清单并安装运行时依赖（不含 dev），供后端 import express/ejs/i18next 等使用
