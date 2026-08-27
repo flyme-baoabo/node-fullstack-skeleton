@@ -63,81 +63,82 @@ jobs:
   # 依赖 job1.build（镜像已推送 ACR）成功
   # 主机上：登录 ACR → pull 镜像 → compose up
   # ============================================================
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      # 环境变量存在性校验：缺任何必填 Secret 时立即失败并输出缺哪个
-      # 涵盖 CI/CD 基建 + docker-compose 运行期（compose 实际引用）全量变量
-      - name: Validate required secrets
-        env:
-          REGISTRY_USER: ${{ secrets.REGISTRY_USER }}
-          REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
-          DEPLOY_SERVER_HOST: ${{ secrets.DEPLOY_SERVER_HOST }}
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
-          DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
-          DB_USER: ${{ secrets.DB_USER }}
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-          DB_NAME: ${{ secrets.DB_NAME }}
-          REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
-        run: |
-          for name in REGISTRY_USER REGISTRY_PASSWORD DEPLOY_SERVER_HOST DEPLOY_PATH DEPLOY_SSH_PRIVATE_KEY \
-                      DB_USER DB_PASSWORD DB_NAME REDIS_PASSWORD; do
-            eval "value=\${$name}"
-            if [ -z "$value" ]; then
-              echo "❌ 缺少 GitHub Actions Secret: $name"
-              echo "请在 Settings → Secrets and variables → Actions 中配置后再触发。"
-              exit 1
-            fi
-          done
+  # 无 ECS 时暂时注释部署阶段，避免误触发
+  # deploy:
+  #   needs: build
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     # 环境变量存在性校验：缺任何必填 Secret 时立即失败并输出缺哪个
+  #     # 涵盖 CI/CD 基建 + docker-compose 运行期（compose 实际引用）全量变量
+  #     - name: Validate required secrets
+  #       env:
+  #         REGISTRY_USER: ${{ secrets.REGISTRY_USER }}
+  #         REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+  #         DEPLOY_SERVER_HOST: ${{ secrets.DEPLOY_SERVER_HOST }}
+  #         DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+  #         DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+  #         DB_USER: ${{ secrets.DB_USER }}
+  #         DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+  #         DB_NAME: ${{ secrets.DB_NAME }}
+  #         REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+  #       run: |
+  #         for name in REGISTRY_USER REGISTRY_PASSWORD DEPLOY_SERVER_HOST DEPLOY_PATH DEPLOY_SSH_PRIVATE_KEY \
+  #                     DB_USER DB_PASSWORD DB_NAME REDIS_PASSWORD; do
+  #           eval "value=\${$name}"
+  #           if [ -z "$value" ]; then
+  #             echo "❌ 缺少 GitHub Actions Secret: $name"
+  #             echo "请在 Settings → Secrets and variables → Actions 中配置后再触发。"
+  #             exit 1
+  #           fi
+  #         done
 
-      # ---- SSH 准备（同 job 内后续 ssh 复用 agent）----
-      - name: Setup SSH agent
-        env:
-          DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
-          DEPLOY_SERVER_HOST: ${{ secrets.DEPLOY_SERVER_HOST }}
-        run: |
-          eval $(ssh-agent -s)
-          echo "$DEPLOY_SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add - >/dev/null
-          mkdir -p ~/.ssh && chmod 700 ~/.ssh
-          ssh-keyscan "$DEPLOY_SERVER_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+  #     # ---- SSH 准备（同 job 内后续 ssh 复用 agent）----
+  #     - name: Setup SSH agent
+  #       env:
+  #         DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+  #         DEPLOY_SERVER_HOST: ${{ secrets.DEPLOY_SERVER_HOST }}
+  #       run: |
+  #         eval $(ssh-agent -s)
+  #         echo "$DEPLOY_SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add - >/dev/null
+  #         mkdir -p ~/.ssh && chmod 700 ~/.ssh
+  #         ssh-keyscan "$DEPLOY_SERVER_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
-      # ---- 远程部署（全部在主机上执行）----
-      # 镜像已由 build 推送到 ACR，主机在此 login + pull + compose up
-      # 没有 .env 落盘：compose 插值变量由 Secret 注入，经远程 shell export 提供
-      # 只 export compose 真正 ${...} 插值的变量；VITE_PORT / DB_HOST / DB_PORT / REDIS_HOST/PORT 等未引用无需导出
-      - name: Deploy on host (pull + compose up via ssh)
-        env:
-          REGISTRY_USER: ${{ secrets.REGISTRY_USER }}
-          REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
-          DEPLOY_SERVER_HOST: ${{ secrets.DEPLOY_SERVER_HOST }}
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
-          IMAGE_NAME: ${{ env.IMAGE_NAME }}
-          IMAGE_TAG: ${{ env.IMAGE_TAG }}
-          SERVER_PORT: ${{ secrets.SERVER_PORT }}
-          NODE_ENV: ${{ secrets.NODE_ENV }}
-          DB_USER: ${{ secrets.DB_USER }}
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-          DB_NAME: ${{ secrets.DB_NAME }}
-          REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
-          DB_POOL_MAX: ${{ secrets.DB_POOL_MAX }}
-          DB_IDLE_TIMEOUT_MS: ${{ secrets.DB_IDLE_TIMEOUT_MS }}
-          DB_CONNECTION_TIMEOUT_MS: ${{ secrets.DB_CONNECTION_TIMEOUT_MS }}
-          COMPOSE_WAIT_TIMEOUT: ${{ env.COMPOSE_WAIT_TIMEOUT }}
-          TZ: ${{ secrets.TZ }}
-        run: |
-          ssh -o StrictHostKeyChecking=no root@${DEPLOY_SERVER_HOST} "
-            set -e
-            cd ${DEPLOY_PATH} &&
-            # —— 主机侧 ACR 登录 + 拉取 build 已推送的镜像 ——
-            echo ${REGISTRY_PASSWORD} | docker login ${IMAGE_NAME%%/*} -u ${REGISTRY_USER} --password-stdin &&
-            docker pull ${IMAGE_NAME}:${IMAGE_TAG} &&
-            # —— 部署：compose 插值变量由远程 shell export 提供 ——
-            export IMAGE_NAME=${IMAGE_NAME} IMAGE_TAG=${IMAGE_TAG} \
-                   SERVER_PORT=${SERVER_PORT:-3000} NODE_ENV=${NODE_ENV:-production} \
-                   DB_USER=${DB_USER} DB_PASSWORD=${DB_PASSWORD} DB_NAME=${DB_NAME} \
-                   REDIS_PASSWORD=${REDIS_PASSWORD} \
-                   DB_POOL_MAX=${DB_POOL_MAX:-10} DB_IDLE_TIMEOUT_MS=${DB_IDLE_TIMEOUT_MS:-30000} DB_CONNECTION_TIMEOUT_MS=${DB_CONNECTION_TIMEOUT_MS:-5000} \
-                   TZ=${TZ:-Asia/Shanghai} && \
-            docker compose up -d --wait --wait-timeout ${COMPOSE_WAIT_TIMEOUT}
-          "
+  #     # ---- 远程部署（全部在主机上执行）----
+  #     # 镜像已由 build 推送到 ACR，主机在此 login + pull + compose up
+  #     # 没有 .env 落盘：compose 插值变量由 Secret 注入，经远程 shell export 提供
+  #     # 只 export compose 真正 ${...} 插值的变量；VITE_PORT / DB_HOST / DB_PORT / REDIS_HOST/PORT 等未引用无需导出
+  #     - name: Deploy on host (pull + compose up via ssh)
+  #       env:
+  #         REGISTRY_USER: ${{ secrets.REGISTRY_USER }}
+  #         REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+  #         DEPLOY_SERVER_HOST: ${{ secrets.DEPLOY_SERVER_HOST }}
+  #         DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+  #         IMAGE_NAME: ${{ env.IMAGE_NAME }}
+  #         IMAGE_TAG: ${{ env.IMAGE_TAG }}
+  #         SERVER_PORT: ${{ secrets.SERVER_PORT }}
+  #         NODE_ENV: ${{ secrets.NODE_ENV }}
+  #         DB_USER: ${{ secrets.DB_USER }}
+  #         DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+  #         DB_NAME: ${{ secrets.DB_NAME }}
+  #         REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+  #         DB_POOL_MAX: ${{ secrets.DB_POOL_MAX }}
+  #         DB_IDLE_TIMEOUT_MS: ${{ secrets.DB_IDLE_TIMEOUT_MS }}
+  #         DB_CONNECTION_TIMEOUT_MS: ${{ secrets.DB_CONNECTION_TIMEOUT_MS }}
+  #         COMPOSE_WAIT_TIMEOUT: ${{ env.COMPOSE_WAIT_TIMEOUT }}
+  #         TZ: ${{ secrets.TZ }}
+  #       run: |
+  #         ssh -o StrictHostKeyChecking=no root@${DEPLOY_SERVER_HOST} "
+  #           set -e
+  #           cd ${DEPLOY_PATH} &&
+  #           # —— 主机侧 ACR 登录 + 拉取 build 已推送的镜像 ——
+  #           echo ${REGISTRY_PASSWORD} | docker login ${IMAGE_NAME%%/*} -u ${REGISTRY_USER} --password-stdin &&
+  #           docker pull ${IMAGE_NAME}:${IMAGE_TAG} &&
+  #           # —— 部署：compose 插值变量由远程 shell export 提供 ——
+  #           export IMAGE_NAME=${IMAGE_NAME} IMAGE_TAG=${IMAGE_TAG} \
+  #                  SERVER_PORT=${SERVER_PORT:-3000} NODE_ENV=${NODE_ENV:-production} \
+  #                  DB_USER=${DB_USER} DB_PASSWORD=${DB_PASSWORD} DB_NAME=${DB_NAME} \
+  #                  REDIS_PASSWORD=${REDIS_PASSWORD} \
+  #                  DB_POOL_MAX=${DB_POOL_MAX:-10} DB_IDLE_TIMEOUT_MS=${DB_IDLE_TIMEOUT_MS:-30000} DB_CONNECTION_TIMEOUT_MS=${DB_CONNECTION_TIMEOUT_MS:-5000} \
+  #                  TZ=${TZ:-Asia/Shanghai} && \
+  #           docker compose up -d --wait --wait-timeout ${COMPOSE_WAIT_TIMEOUT}
+  #         "
