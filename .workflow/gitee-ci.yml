@@ -9,7 +9,6 @@ notify: []
 strategy:
   blocking: true
 
-
 # ===================== 变量总览 =====================
 # 一、本文件 variables: 段（非敏感，写死或自动生成）
 #   REGISTRY          阿里云 ACR 公网镜像仓库 host（个人版；build/CI 与 ECS pull 均用，公网）
