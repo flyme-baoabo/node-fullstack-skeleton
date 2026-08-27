@@ -69,12 +69,14 @@ stages:
         script: |
           #!/bin/bash
           set -euo pipefail
-          echo "镜像仓库域名: ${IMAGE_REGISTRY}"
-          FULL_IMG="${IMAGE_NAME}:${GITEE_PIPELINE_BUILD_NUMBER}"
-          docker login "${IMAGE_REGISTRY}" -u "${REGISTRY_USER}" -p "${REGISTRY_PASSWORD}"
-          docker build -t "${FULL_IMG}" -f ./Dockerfile .
-          docker push "${FULL_IMG}"
-          echo "✅镜像推送完成：${FULL_IMG}"
+          R="crpi-1vp5deeta128cxtu.cn-beijing.personal.cr.aliyuncs.com"
+          IMG="${R}/my-app-flyme/node-fullstack-skeleton"
+          TAG="${GITEE_PIPELINE_BUILD_NUMBER}"
+          echo "域名: ${R}"
+          docker login "${R}" -u "${REGISTRY_USER}" -p "${REGISTRY_PASSWORD}"
+          docker build -t "${IMG}:${TAG}" -f ./Dockerfile .
+          docker push "${IMG}:${TAG}"
+          echo "✅ 推送完成：${IMG}:${TAG}"
         notify: []
         strategy:
           retry: "0"
