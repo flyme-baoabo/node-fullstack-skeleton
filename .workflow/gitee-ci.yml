@@ -17,7 +17,7 @@ strategy:
 #   IMAGE_NAME        ACR 完整镜像仓库地址（由 REGISTRY 拼接）
 #   IMAGE_NAME_VPC    ACR 内网（-vpc）地址——个人版不支持同账号 ECS 内网拉取（官方 2024-09-04 后），暂未启用
 #   IMAGE_TAG         镜像 tag，供 build@docker 之外的引用（部署 shell 用）；
-#                      build@docker 的 tag 直接引用平台内置 ${GITEE_PIPELINE_BUILD_NUMBER}，
+#                      build@docker 的 tag 直接引用平台内置 ${GITEE_COMMIT}，
 #                     不经过本 variables 段（variables 里不展开平台内置变量）
 #   COMPOSE_WAIT_TIMEOUT  compose 部署健康等待超时
 # 二、平台 Secrets 中配置的变量（CI 中直接以环境变量引用）
@@ -71,7 +71,7 @@ stages:
         username: ${REGISTRY_USER}
         password: ${REGISTRY_PASSWORD}
         # 用平台内置构建号（与官方模板一致）；直接写在此处即可展开（不经过 variables 中转）
-        tag: ${GITEE_PIPELINE_BUILD_NUMBER}
+        tag: ${GITEE_COMMIT}
         dockerfile: ./Dockerfile
         context: ""
         artifacts: ""
@@ -131,9 +131,9 @@ stages:
   #           cd ${DEPLOY_PATH} &&
   #           # —— 主机侧 ACR 登录 + 拉取 build 已推送的镜像 ——
   #           echo ${REGISTRY_PASSWORD} | docker login ${REGISTRY} -u ${REGISTRY_USER} --password-stdin &&
-  #           docker pull ${IMAGE_NAME}:${GITEE_PIPELINE_BUILD_NUMBER} &&
+  #           docker pull ${IMAGE_NAME}:${GITEE_COMMIT} &&
   #           # —— 部署：compose 插值变量由 shell export 提供 ——
-  #           export IMAGE_NAME=${IMAGE_NAME} IMAGE_TAG=${GITEE_PIPELINE_BUILD_NUMBER} \
+  #           export IMAGE_NAME=${IMAGE_NAME} IMAGE_TAG=${GITEE_COMMIT} \
   #                  SERVER_PORT=${SERVER_PORT:-3000} NODE_ENV=${NODE_ENV:-production} \
   #                  DB_USER=${DB_USER} DB_PASSWORD=${DB_PASSWORD} DB_NAME=${DB_NAME} \
   #                  REDIS_PASSWORD=${REDIS_PASSWORD} \
