@@ -1,4 +1,7 @@
+version: '1.0'
+# name: node‑fullstack‑pipeline
 name: Build -> Push -> Deploy
+displayName: "Node全栈构建部署流水线"
 
 # 手动触发（Gitee Go 与 GitHub Actions 同为 workflow_dispatch 手动触发）
 on:
