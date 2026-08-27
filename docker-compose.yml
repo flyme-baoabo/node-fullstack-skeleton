@@ -24,6 +24,7 @@ services:
     environment:
       NODE_ENV: ${NODE_ENV:-production}
       SERVER_PORT: ${SERVER_PORT}
+      TZ: ${TZ:-Asia/Shanghai}
       DB_POOL_MAX: ${DB_POOL_MAX}
       DB_IDLE_TIMEOUT_MS: ${DB_IDLE_TIMEOUT_MS}
       DB_CONNECTION_TIMEOUT_MS: ${DB_CONNECTION_TIMEOUT_MS}
