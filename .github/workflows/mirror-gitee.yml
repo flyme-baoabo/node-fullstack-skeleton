@@ -3,6 +3,7 @@ name: Sync To Gitee
 on:
   push:
     branches: [ main, master, develop, spa ] #需要同步的分支
+  workflow_dispatch: # 支持在 Actions 页面手动触发
 jobs:
   sync:
     runs-on: ubuntu-latest
