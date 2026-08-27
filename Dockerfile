@@ -5,9 +5,11 @@
 # 说明：
 #   - i18n 字典（.json）经 const import 静态编译进 dist-server，运行阶段无需再拷；
 #   - EJS 视图由 build-server.js 自动从 server/src 复制进 dist-server/views，也无需单独 COPY。
-# 基础镜像源前缀：Gitee 执行机访问 Docker Hub 常超时，默认改用国内可访问镜像源。
+# 基础镜像源前缀：Gitee 执行机访问 Docker Hub 常超时，默认改用国内可匿名拉取的镜像加速源。
+#   - 默认：docker.m.daocloud.io（DaoCloud 的 Docker Hub 加速，与官方 tag 同步，国内可拉）
+#   - 阿里云 registry.aliyuncs.com/library/node 需授权，不可匿名拉取，已弃用
 # 如需还原官方源：docker build --build-arg BASE_IMAGE=node:20-alpine …
-ARG BASE_IMAGE=registry.aliyuncs.com/library/node:20-alpine
+ARG BASE_IMAGE=docker.m.daocloud.io/library/node:20-alpine
 FROM ${BASE_IMAGE} AS builder
 WORKDIR /app
 # 先装依赖，利用包缓存
