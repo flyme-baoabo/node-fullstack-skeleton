@@ -12,12 +12,13 @@ volumes:
 services:
   fullstack-app:
     # 生产环境：不配置build，镜像由CI提前构建
-    image: ${IMAGE_NAME}:${CI_COMMIT_SHA}
+    # 平台无关写法：IMAGE_TAG 由各 CI 平台工作流注入（GitHub=${{ github.sha }}，Gitee=${{ gitee.sha }}）
+    image: ${IMAGE_NAME}:${IMAGE_TAG}
     ports:
       - "${SERVER_PORT}:3000"
-    # 服务级环境变量（仅Node业务生效）
+    # 服务端环境变量（仅Node业务生效）
     # ⚠️ 链条拆解：
-    #   0) 值来源：CI export（生产无 .env，deploy_prod 经 ssh export 提供）
+    #   0) 值来源：CI export（生产无 .env，deploy 经 ssh export 提供）
     #   1) ${SERVER_PORT} 先被 compose 解析器插值（同时用于上方 ports 映射）
     #   2) environment 再把解析后的值写进容器进程（Node 内 process.env.SERVER_PORT）
     #   export 与 environment 不可互相替代：缺 export 插值变空，缺 environment 值进不了容器

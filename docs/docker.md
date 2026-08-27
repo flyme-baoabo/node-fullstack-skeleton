@@ -108,6 +108,6 @@ docker compose down -v
 
 | 文件 | 作用 | image 来源 | Node 进程位置 |
 |---|---|---|---|
-| `docker-compose.yml` | 生产部署 + 本地全容器模拟生产的 base | `${IMAGE_NAME}:${CI_COMMIT_SHA}`（CI 预构建） | 容器 |
+| `docker-compose.yml` | 生产部署 + 本地全容器模拟生产的 base | `${IMAGE_NAME}:${IMAGE_TAG}`（CI 预构建） | 容器 |
 | `docker-compose.local.yml` | 差异覆盖（仅把 `fullstack-app` 改为本地构建） | `build: .` 本地构建 | 容器 |
 | `docker-compose.develop.yml` | 纯开发中间件 | 官方镜像 | 宿主机 |

@@ -18,7 +18,7 @@ services:
       args:
         MODE: ${MODE:-production}
     # 核心差异 2/2：补一个本地镜像 tag。base 的 image 依赖 CI 才有的
-    # IMAGE_NAME/CI_COMMIT_SHA，本地无此变量；不覆盖 image 会变成空值导致无效镜像名。
+    # IMAGE_NAME/IMAGE_TAG，本地无此变量；不覆盖 image 会变成空值导致无效镜像名。
     # Dockerfile 构建产物会以这个 tag 命名（默认 node-fullstack-skeleton:local）。
     # 默认值仅作兜底：可临时导出 IMAGE_NAME / IMAGE_TAG 覆盖。
     image: ${IMAGE_NAME:-node-fullstack-skeleton}:${IMAGE_TAG:-local}
