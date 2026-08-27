@@ -61,21 +61,20 @@ stages:
     strategy: naturally
     trigger: auto
     steps:
-      # Gitee Go 内置 docker 构建插件：构建 Dockerfile 镜像并推送
-      - step: build@docker
+      # shell@agent：在 CI 执行机上手动 docker build + docker login + docker push
+      # 地址、路径、tag 全部自己掌控，绕开 build@docker 插件拼地址把 tag 拼成路径的一层的坑
+      # （插件曾把 tag 值拼进 / 后，导致去推一个不存在的仓库 .../repo/11 → authorization failed）
+      - step: shell@agent
         name: ""
-        displayName: 镜像构建并推送
-        type: account            # account = 登录仓库后推送
-        # repository 写死完整地址，避免 build@docker 插件对 ${REGISTRY} 嵌套变量二次映射不展开的坑
-        repository: "crpi-1vp5deeta128cxtu.cn-beijing.personal.cr.aliyuncs.com/my-app-flyme/node-fullstack-skeleton"
-        username: "flyme0208"
-        password: ${REGISTRY_PASSWORD}
-        # 用平台内置构建号（官方模板、验证过可展开）；直接写在此处（不经过 variables 中转）
-        tag: ${GITEE_PIPELINE_BUILD_NUMBER}
-        dockerfile: ./Dockerfile
-        context: ""
-        artifacts: ""
-        isCache: false
+        displayName: 构建并推送镜像到ACR
+        # 用平台内置 COMMIT 当 tag（官方模板、可展开）；不经过 variables 中转
+        script: |
+          set -e
+          IMAGE="${REGISTRY}/my-app-flyme/node-fullstack-skeleton"
+          TAG="${GITEE_COMMIT}"
+          docker build -t "${IMAGE}:${TAG}" -f ./Dockerfile .
+          echo "${REGISTRY_PASSWORD}" | docker login "${REGISTRY}" -u "${REGISTRY_USER}" --password-stdin
+          docker push "${IMAGE}:${TAG}"
         notify: []
         strategy:
           retry: "0"
