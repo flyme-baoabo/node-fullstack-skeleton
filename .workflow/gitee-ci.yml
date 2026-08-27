@@ -42,11 +42,11 @@ variables:
 #                 name（同名 id，被 needs 引用）/ displayName /
 #                 strategy / trigger / needs / steps[]
 #   steps[]  —— step 数组，按顺序执行
-#   step     —— 最小执行单元，如 build@docker（构建镜像）/ run@shell（跑脚本）
+#   step     —— 最小执行单元：build@docker（构建镜像）/ shell@agent（CI 执行机跑 shell）
 #
 # 本文件两个阶段：
 #   stage1 构建推送镜像（build@docker 登录 ACR 构建+推送）
-#   stage2 部署到ECS（needs 构建推送镜像；run@shell SSH 主机 pull + compose up）
+#   stage2 部署到ECS（needs 构建推送镜像；shell@agent 在 CI 机 SSH 主机 pull + compose up）
 # =====================================================================
 stages:
   # ============================================================
@@ -89,7 +89,8 @@ stages:
     trigger: auto
     needs: [ 构建推送镜像 ]
     steps:
-      - step: run@shell
+      # shell@agent：在 CI 执行机上跑 shell（脚本内 ssh 到 ECS 主机 pull + compose up）
+      - step: shell@agent
         name: ""
         displayName: ECS pull镜像 + docker compose部署
         script: |
