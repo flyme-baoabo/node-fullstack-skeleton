@@ -69,10 +69,10 @@ stages:
         type: account            # account = 登录仓库后推送
         # repository 写死完整地址，避免 build@docker 插件对 ${REGISTRY} 嵌套变量二次映射不展开的坑
         repository: "crpi-1vp5deeta128cxtu.cn-beijing.personal.cr.aliyuncs.com/my-app-flyme/node-fullstack-skeleton"
-        username: ${REGISTRY_USER}
+        username: "flyme0208"
         password: ${REGISTRY_PASSWORD}
         # 用平台内置构建号（官方模板、验证过可展开）；直接写在此处（不经过 variables 中转）
-        tag: ${GITEE_COMMIT}
+        tag: ${GITEE_PIPELINE_BUILD_NUMBER}
         dockerfile: ./Dockerfile
         context: ""
         artifacts: ""
@@ -132,9 +132,9 @@ stages:
   #           cd ${DEPLOY_PATH} &&
   #           # —— 主机侧 ACR 登录 + 拉取 build 已推送的镜像 ——
   #           echo ${REGISTRY_PASSWORD} | docker login ${REGISTRY} -u ${REGISTRY_USER} --password-stdin &&
-  #           docker pull ${IMAGE_NAME}:${GITEE_COMMIT} &&
+  #           docker pull ${IMAGE_NAME}:${GITEE_PIPELINE_BUILD_NUMBER} &&
   #           # —— 部署：compose 插值变量由 shell export 提供 ——
-  #           export IMAGE_NAME=${IMAGE_NAME} IMAGE_TAG=${GITEE_COMMIT} \
+  #           export IMAGE_NAME=${IMAGE_NAME} IMAGE_TAG=${GITEE_PIPELINE_BUILD_NUMBER} \
   #                  SERVER_PORT=${SERVER_PORT:-3000} NODE_ENV=${NODE_ENV:-production} \
   #                  DB_USER=${DB_USER} DB_PASSWORD=${DB_PASSWORD} DB_NAME=${DB_NAME} \
   #                  REDIS_PASSWORD=${REDIS_PASSWORD} \
