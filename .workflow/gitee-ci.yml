@@ -45,9 +45,10 @@ variables:
 #   steps[]  —— step 数组，按顺序执行
 #   step     —— 最小执行单元：shell@agent（CI 执行机跑 shell，stage1/2 均用它）
 #
+#   step     —— 最小执行单元：build@docker（构建镜像）/ shell@agent（CI 执行机跑 shell）
+#
 # 本文件两个阶段：
-#   stage1 构建推送镜像（shell@agent 显式 docker login + build + push（直连 ACR）
-#             —— 不用 build@docker 只因它的 DOCKER_* 字段映射不可靠）
+#   stage1 构建推送镜像（build@docker 登录 ACR 构建+推送）
 #   stage2 部署到ECS（needs 构建推送镜像；shell@agent 在 CI 机 SSH 主机 pull + compose up）
 #   —— 暂无 ECS，部署阶段先注释，后续恢复此段（与 github-ci.yml 的做法一致）
 # =====================================================================
@@ -61,22 +62,20 @@ stages:
     strategy: naturally
     trigger: auto
     steps:
-      # 用 shell@agent 显式执行 login + build + push，绕开 build@docker 的 DOCKER_* 字段映射。
-      # 凭据直接取平台注入的环境变量 ${REGISTRY_USER}/${REGISTRY_PASSWORD}（同 GitHub run 写法）。
-      - step: shell@agent
+      # Gitee Go 内置 docker 构建插件：构建 Dockerfile 镜像并推送
+      - step: build@docker
         name: ""
-        displayName: 登录ACR + 构建推送镜像
-        script: |
-          #!/bin/bash
-          set -euo pipefail
-          R="crpi-1vp5deeta128cxtu.cn-beijing.personal.cr.aliyuncs.com"
-          IMG="${R}/my-app-flyme/node-fullstack-skeleton"
-          TAG="${GITEE_PIPELINE_BUILD_NUMBER}"
-          echo "域名: ${R}"
-          docker login "${R}" -u "${REGISTRY_USER}" -p "${REGISTRY_PASSWORD}"
-          docker build -t "${IMG}:${TAG}" -f ./Dockerfile .
-          docker push "${IMG}:${TAG}"
-          echo "✅ 推送完成：${IMG}:${TAG}"
+        displayName: 镜像构建并推送
+        type: account            # account = 登录仓库后推送
+        repository: ${IMAGE_NAME}
+        username: ${REGISTRY_USER}
+        password: ${REGISTRY_PASSWORD}
+        # 用平台内置构建号（与官方模板一致）；直接写在此处即可展开（不经过 variables 中转）
+        tag: ${GITEE_PIPELINE_BUILD_NUMBER}
+        dockerfile: ./Dockerfile
+        context: ""
+        artifacts: ""
+        isCache: false
         notify: []
         strategy:
           retry: "0"
