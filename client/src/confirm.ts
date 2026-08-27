@@ -1,3 +1,5 @@
+import { t } from './i18n';
+
 /**
  * 确认弹窗 + htmx:confirm 拦截模块。
  *
@@ -21,6 +23,7 @@ let modalRoot: HTMLElement | null = null;
 interface ConfirmOptions {
     title?: string;
     confirmText?: string;
+    cancelText?: string;
     /** danger = 红色（删除）；info = 蓝色/常规（切换等） */
     variant?: 'danger' | 'info';
 }
@@ -30,7 +33,7 @@ export function openConfirm(
     message: string,
     options: ConfirmOptions = {},
 ): Promise<boolean> {
-    const { title = '确认操作', confirmText = '确认', variant = 'info' } = options;
+    const { title, confirmText, cancelText, variant = 'info' } = options;
     const isDanger = variant === 'danger';
     // 图标与按钮的配色随变体切换
     const badgeClass = isDanger
@@ -61,11 +64,11 @@ export function openConfirm(
                 <path stroke-linecap="round" stroke-linejoin="round" d="${iconPath}" />
                 </svg>
             </div>
-            <h3 class="mt-4 text-center text-lg font-semibold text-gray-900">${escapeHtml(title)}</h3>
+            <h3 class="mt-4 text-center text-lg font-semibold text-gray-900">${escapeHtml(title, 'confirm.title')}</h3>
             <p class="mt-2 text-center text-sm leading-relaxed text-gray-500">${escapeHtml(message)}</p>
             <div class="mt-6 flex items-center justify-end gap-3">
-                <button type="button" data-action="cancel" class="btn-ghost">取消</button>
-                <button type="button" data-action="confirm" class="${confirmBtnClass}">${escapeHtml(confirmText)}</button>
+                <button type="button" data-action="cancel" class="btn-ghost">${escapeHtml(cancelText, 'confirm.cancel_btn')}</button>
+                <button type="button" data-action="confirm" class="${confirmBtnClass}">${escapeHtml(confirmText, 'confirm.confirm_btn')}</button>
             </div>
         `;
 
@@ -102,7 +105,10 @@ function closeModal(): void {
 }
 
 /** 转义 HTML，避免待办文本把弹窗结构搞乱（防注入） */
-function escapeHtml(str: string): string {
+function escapeHtml(str?: string, defaultKey?: string): string {
+    if (!str) {
+        return defaultKey ? escapeHtml(t(defaultKey)) : '';
+    }
     return str.replace(
         /[&<>"']/g,
         (c) =>
@@ -133,6 +139,7 @@ export function handleConfirm(e: Event): void {
     void openConfirm(message, {
         title: getAttr('data-confirm-title') || undefined,
         confirmText: getAttr('data-confirm-confirm') || undefined,
+        cancelText: getAttr('data-confirm-cancel') || undefined,
         variant:
             (getAttr('data-confirm-variant') as 'danger' | 'info' | null) ??
             undefined,
