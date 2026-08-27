@@ -33,6 +33,7 @@ variables:
   REGISTRY: "crpi-1vp5deeta128cxtu.cn-beijing.personal.cr.aliyuncs.com"
   IMAGE_NAME: "${REGISTRY}/my-app-flyme/node-fullstack-skeleton"
   IMAGE_NAME_VPC: "crpi-1vp5deeta128cxtu-vpc.cn-beijing.personal.cr.aliyuncs.com/my-app-flyme/node-fullstack-skeleton"
+  IMAGE_TAG: "${GITEE_PIPELINE_BUILD_NUMBER}"
   COMPOSE_WAIT_TIMEOUT: "60"
 
 # ===================== 结构说明（Gitee Go schema） =====================
@@ -68,13 +69,12 @@ stages:
         name: ""
         displayName: 构建并推送镜像到ACR
         # 用平台内置 COMMIT 当 tag（官方模板、可展开）；不经过 variables 中转
+        # 镜像地址直接复用 variables: 段的 IMAGE_NAME（crpi-.../my-app-flyme/node-fullstack-skeleton）
         script: |
           set -e
-          IMAGE="${REGISTRY}/my-app-flyme/node-fullstack-skeleton"
-          TAG="${GITEE_COMMIT}"
-          docker build -t "${IMAGE}:${TAG}" -f ./Dockerfile .
+          docker build -t "${IMAGE_NAME}:${IMAGE_TAG}" -f ./Dockerfile .
           echo "${REGISTRY_PASSWORD}" | docker login "${REGISTRY}" -u "${REGISTRY_USER}" --password-stdin
-          docker push "${IMAGE}:${TAG}"
+          docker push "${IMAGE_NAME}:${IMAGE_TAG}"
         notify: []
         strategy:
           retry: "0"
@@ -130,9 +130,9 @@ stages:
   #           cd ${DEPLOY_PATH} &&
   #           # —— 主机侧 ACR 登录 + 拉取 build 已推送的镜像 ——
   #           echo ${REGISTRY_PASSWORD} | docker login ${REGISTRY} -u ${REGISTRY_USER} --password-stdin &&
-  #           docker pull ${IMAGE_NAME}:${GITEE_PIPELINE_BUILD_NUMBER} &&
+  #           docker pull ${IMAGE_NAME}:${IMAGE_TAG} &&
   #           # —— 部署：compose 插值变量由 shell export 提供 ——
-  #           export IMAGE_NAME=${IMAGE_NAME} IMAGE_TAG=${GITEE_PIPELINE_BUILD_NUMBER} \
+  #           export IMAGE_NAME=${IMAGE_NAME} IMAGE_TAG=${IMAGE_TAG} \
   #                  SERVER_PORT=${SERVER_PORT:-3000} NODE_ENV=${NODE_ENV:-production} \
   #                  DB_USER=${DB_USER} DB_PASSWORD=${DB_PASSWORD} DB_NAME=${DB_NAME} \
   #                  REDIS_PASSWORD=${REDIS_PASSWORD} \
