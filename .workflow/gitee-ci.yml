@@ -1,10 +1,14 @@
-version: '1.0'
-name: node-fullstack-pipeline
-displayName: "Node全栈构建部署流水线"
+version: "1.0"
+name: Node全栈构建部署流水线
+displayName: Node全栈构建部署流水线
 
-# 手动触发（Gitee Go：triggers/manual）
+# 手动触发（Gitee Go：trigger: manual）
 triggers:
-  manual: {}
+  trigger: manual
+notify: []
+strategy:
+  blocking: true
+
 
 # ===================== 变量总览 =====================
 # 一、本文件 variables: 段（非敏感，写死或自动生成）
@@ -32,91 +36,101 @@ variables:
   COMPOSE_WAIT_TIMEOUT: "60"
 
 # ===================== 结构说明（Gitee Go schema） =====================
-# 层级：stages[] → stage → steps[] → step
-#   stages[]  —— 阶段数组，每个元素是一个 stage 对象
-#   stage     —— 一个阶段，如「构建推送」/「部署」，可配 name/displayName/needs
-#   steps[]   —— step 数组，按顺序执行（直接挂在 stage 下）
-#   step      —— 最小执行单元，如 build@docker（构建镜像）/ run@shell（跑脚本）
+# 层级：stages[] → 阶段对象（name/...）→ steps[] → step
+#   stages[] —— 阶段数组，每个元素直接是一个阶段对象（无嵌套 stage 键）
+#   阶段对象   —— 如「构建推送镜像」/「部署到ECS」，字段：
+#                 name（同名 id，被 needs 引用）/ displayName /
+#                 strategy / trigger / needs / steps[]
+#   steps[]  —— step 数组，按顺序执行
+#   step     —— 最小执行单元，如 build@docker（构建镜像）/ run@shell（跑脚本）
 #
-# 本文件两条链：
-#   stages[0] build_stage（build@docker 构建+推送 ACR）
-#   stages[1] deploy_stage(needs build_stage)（run@shell SSH 部署）
+# 本文件两个阶段：
+#   stage1 构建推送镜像（build@docker 登录 ACR 构建+推送）
+#   stage2 部署到ECS（needs 构建推送镜像；run@shell SSH 主机 pull + compose up）
 # =====================================================================
 stages:
   # ============================================================
   # stage 1 —— 构建并推送镜像（在 CI 执行机上）
   #   build + push 到 ACR，不触碰生产服务器（SSH 全部留给 stage 2）
   # ============================================================
-  - stage:
-      name: build_stage
-      displayName: "构建并推送镜像到ACR"
-      steps:
-        # Gitee Go 内置 docker 构建插件：构建 Dockerfile 并推送镜像到 ACR
-        - step: build@docker
-          name: docker_build_push
-          displayName: "Docker Build & Push ACR"
-          inputs:
-            dockerfile: ./Dockerfile
-            image: ${IMAGE_NAME}:${IMAGE_TAG}
-            # Gitee Go 变量不做 shell 展开，故用显式 REGISTRY 变量而非 ${IMAGE_NAME%%/*}
-            registry: ${REGISTRY}
-            registryCredential:
-              username: ${REGISTRY_USER}
-              password: ${REGISTRY_PASSWORD}
+  - name: 构建推送镜像
+    displayName: 构建推送镜像
+    strategy: naturally
+    trigger: auto
+    steps:
+      # Gitee Go 内置 docker 构建插件：构建 Dockerfile 镜像并推送
+      - step: build@docker
+        name: ""
+        displayName: 镜像构建并推送
+        type: account            # account = 登录仓库后推送
+        repository: ${IMAGE_NAME}
+        username: ${REGISTRY_USER}
+        password: ${REGISTRY_PASSWORD}
+        tag: ${IMAGE_TAG}
+        dockerfile: ./Dockerfile
+        context: ""
+        artifacts: ""
+        isCache: false
+        notify: []
+        strategy:
+          retry: "0"
+          resource:
+            cpu: "2"
+            memory: "4"
 
   # ============================================================
   # stage 2 —— 部署（全程在主机上，通过 ssh 执行）
-  # 依赖 build_stage（镜像已推送 ACR）成功
+  # 依赖 stage 1（镜像已推送 ACR）成功
   # 主机上：login ACR → pull 镜像 → compose up
   # ============================================================
-  - stage:
-      name: deploy_stage
-      displayName: "SSH远程部署到ECS"
-      needs: [ build_stage ]
-      steps:
-        - step: run@shell
-          name: remote_deploy
-          displayName: "ECS pull镜像 + docker compose部署"
-          inputs:
-            script: |
-              # ========== 1. Secret 非空校验：缺任何必填 Secret 立即失败并列出缺哪个 ==========
-              # 涵盖 CI/CD 基建 + docker-compose 运行期（compose 实际引用）全量变量
-              check_vars=(
-                REGISTRY_USER REGISTRY_PASSWORD
-                DEPLOY_SERVER_HOST DEPLOY_PATH DEPLOY_SSH_PRIVATE_KEY
-                DB_USER DB_PASSWORD DB_NAME REDIS_PASSWORD
-              )
-              for name in "${check_vars[@]}"; do
-                val=$(eval "echo \$$name")
-                if [ -z "$val" ]; then
-                  echo "❌ GiteeGo 流水线缺少变量：$name"
-                  exit 1
-                fi
-              done
+  - name: 部署到ECS
+    displayName: 部署到ECS
+    strategy: naturally
+    trigger: auto
+    needs: [ 构建推送镜像 ]
+    steps:
+      - step: run@shell
+        name: ""
+        displayName: ECS pull镜像 + docker compose部署
+        script: |
+          # ========== 1. Secret 非空校验：缺任何必填 Secret 立即失败并列出缺哪个 ==========
+          # 涵盖 CI/CD 基建 + docker-compose 运行期（compose 实际引用）全量变量
+          check_vars=(
+            REGISTRY_USER REGISTRY_PASSWORD
+            DEPLOY_SERVER_HOST DEPLOY_PATH DEPLOY_SSH_PRIVATE_KEY
+            DB_USER DB_PASSWORD DB_NAME REDIS_PASSWORD
+          )
+          for name in "${check_vars[@]}"; do
+            val=$(eval "echo \$$name")
+            if [ -z "$val" ]; then
+              echo "❌ GiteeGo 流水线缺少变量：$name"
+              exit 1
+            fi
+          done
 
-              # ========== 2. 本地执行机加载 SSH agent（供后续 ssh 复用） ==========
-              eval $(ssh-agent -s)
-              echo "$DEPLOY_SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add - >/dev/null
-              mkdir -p ~/.ssh
-              chmod 700 ~/.ssh
-              ssh-keyscan "${DEPLOY_SERVER_HOST}" >> ~/.ssh/known_hosts 2>/dev/null
+          # ========== 2. 本地执行机加载 SSH agent（供后续 ssh 复用） ==========
+          eval $(ssh-agent -s)
+          echo "$DEPLOY_SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add - >/dev/null
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          ssh-keyscan "${DEPLOY_SERVER_HOST}" >> ~/.ssh/known_hosts 2>/dev/null
 
-              # ========== 3. 远程 SSH 执行部署（全程在主机上） ==========
-              # 镜像已由 stage 1 推送到 ACR，主机只拉取 + compose up
-              # 没有 .env 落盘：compose 插值变量由 Secret 注入，经远程 shell export 提供
-              # 只 export compose 真正 ${...} 插值的变量；VITE_PORT / DB_HOST / DB_PORT / REDIS_HOST/PORT 等无需导出
-              ssh -o StrictHostKeyChecking=no root@${DEPLOY_SERVER_HOST} "
-                set -e
-                cd ${DEPLOY_PATH} &&
-                # —— 主机侧 ACR 登录 + 拉取 build 已推送的镜像 ——
-                echo ${REGISTRY_PASSWORD} | docker login ${REGISTRY} -u ${REGISTRY_USER} --password-stdin &&
-                docker pull ${IMAGE_NAME}:${IMAGE_TAG} &&
-                # —— 部署：compose 插值变量由 shell export 提供 ——
-                export IMAGE_NAME=${IMAGE_NAME} IMAGE_TAG=${IMAGE_TAG} \
-                       SERVER_PORT=${SERVER_PORT:-3000} NODE_ENV=${NODE_ENV:-production} \
-                       DB_USER=${DB_USER} DB_PASSWORD=${DB_PASSWORD} DB_NAME=${DB_NAME} \
-                       REDIS_PASSWORD=${REDIS_PASSWORD} \
-                       DB_POOL_MAX=${DB_POOL_MAX:-10} DB_IDLE_TIMEOUT_MS=${DB_IDLE_TIMEOUT_MS:-30000} DB_CONNECTION_TIMEOUT_MS=${DB_CONNECTION_TIMEOUT_MS:-5000} \
-                       TZ=${TZ:-Asia/Shanghai} && \
-                docker compose up -d --wait --wait-timeout ${COMPOSE_WAIT_TIMEOUT}
-              "
+          # ========== 3. 远程 SSH 执行部署（全程在主机上） ==========
+          # 镜像已由 stage 1 推送到 ACR，主机只拉取 + compose up
+          # 没有 .env 落盘：compose 插值变量由 Secret 注入，经远程 shell export 提供
+          # 只 export compose 真正 ${...} 插值的变量；VITE_PORT / DB_HOST / DB_PORT / REDIS_HOST/PORT 等无需导出
+          ssh -o StrictHostKeyChecking=no root@${DEPLOY_SERVER_HOST} "
+            set -e
+            cd ${DEPLOY_PATH} &&
+            # —— 主机侧 ACR 登录 + 拉取 build 已推送的镜像 ——
+            echo ${REGISTRY_PASSWORD} | docker login ${REGISTRY} -u ${REGISTRY_USER} --password-stdin &&
+            docker pull ${IMAGE_NAME}:${IMAGE_TAG} &&
+            # —— 部署：compose 插值变量由 shell export 提供 ——
+            export IMAGE_NAME=${IMAGE_NAME} IMAGE_TAG=${IMAGE_TAG} \
+                   SERVER_PORT=${SERVER_PORT:-3000} NODE_ENV=${NODE_ENV:-production} \
+                   DB_USER=${DB_USER} DB_PASSWORD=${DB_PASSWORD} DB_NAME=${DB_NAME} \
+                   REDIS_PASSWORD=${REDIS_PASSWORD} \
+                   DB_POOL_MAX=${DB_POOL_MAX:-10} DB_IDLE_TIMEOUT_MS=${DB_IDLE_TIMEOUT_MS:-30000} DB_CONNECTION_TIMEOUT_MS=${DB_CONNECTION_TIMEOUT_MS:-5000} \
+                   TZ=${TZ:-Asia/Shanghai} && \
+            docker compose up -d --wait --wait-timeout ${COMPOSE_WAIT_TIMEOUT}
+          "
