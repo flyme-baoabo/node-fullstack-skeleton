@@ -64,8 +64,8 @@ stages:
       # 用 shell@agent 显式执行 login + build + push，绕开 build@docker 的 DOCKER_* 字段映射。
       # 凭据直接取平台注入的环境变量 ${REGISTRY_USER}/${REGISTRY_PASSWORD}（同 GitHub run 写法）。
       - step: shell@agent
-        name: 构建并推送镜像到阿里云ACR
-        hostGroupID: gitee-go
+        name: ""
+        displayName: 登录ACR + 构建推送镜像
         script: |
           #!/bin/bash
           set -euo pipefail
