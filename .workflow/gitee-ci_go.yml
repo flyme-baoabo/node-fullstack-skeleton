@@ -1,0 +1,76 @@
+version: '1.0'
+name: node-fullstack-pipeline
+displayName: "Node全栈构建部署流水线"
+
+triggers:
+  manual: {}
+
+variables:
+  IMAGE_NAME: "crpi-1vp5deeta128cxtu.cn-beijing.personal.cr.aliyuncs.com/my-app-flyme/node-fullstack-skeleton"
+  IMAGE_NAME_VPC: "crpi-1vp5deeta128cxtu-vpc.cn-beijing.personal.cr.aliyuncs.com/my-app-flyme/node-fullstack-skeleton"
+  IMAGE_TAG: ${GIT_COMMIT}
+  COMPOSE_WAIT_TIMEOUT: "60"
+
+stages:
+  - stage:
+      name: build_stage
+      displayName: "构建并推送镜像到ACR"
+      steps:
+        - step: build@docker
+          name: docker_build_push
+          displayName: "Docker Build & Push ACR"
+          inputs:
+            dockerfile: ./Dockerfile
+            image: ${IMAGE_NAME}:${IMAGE_TAG}
+            registry: ${IMAGE_NAME%%/*}
+            registryCredential:
+              username: ${REGISTRY_USER}
+              password: ${REGISTRY_PASSWORD}
+
+  - stage:
+      name: deploy_stage
+      displayName: "SSH远程部署到ECS"
+      needs: [ build_stage ]
+      steps:
+        - step: run@shell
+          name: remote_deploy
+          displayName: "ECS pull镜像 + docker compose部署"
+          inputs:
+            script: |
+              # ========== 1.Secret非空校验（替代原yaml层校验） ==========
+              check_vars=(
+                REGISTRY_USER REGISTRY_PASSWORD
+                DEPLOY_SERVER_HOST DEPLOY_PATH DEPLOY_SSH_PRIVATE_KEY
+                DB_USER DB_PASSWORD DB_NAME REDIS_PASSWORD
+              )
+              for name in "${check_vars[@]}"; do
+                val=$(eval "echo \$$name")
+                if [ -z "$val" ]; then
+                  echo "❌ GiteeGo流水线缺少变量：$name"
+                  exit 1
+                fi
+              done
+
+              # ========== 2.本地Runner加载SSH agent ==========
+              eval $(ssh-agent -s)
+              echo "$DEPLOY_SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add - >/dev/null
+              mkdir -p ~/.ssh
+              chmod 700 ~/.ssh
+              ssh-keyscan "${DEPLOY_SERVER_HOST}" >> ~/.ssh/known_hosts 2>/dev/null
+
+              # ========== 3.远程SSH执行部署 ==========
+              ssh -o StrictHostKeyChecking=no root@${DEPLOY_SERVER_HOST} "
+                set -e
+                cd ${DEPLOY_PATH} &&
+                echo ${REGISTRY_PASSWORD} | docker login ${IMAGE_NAME%%/*} -u ${REGISTRY_USER} --password-stdin &&
+                docker pull ${IMAGE_NAME}:${IMAGE_TAG} &&
+
+                export IMAGE_NAME=${IMAGE_NAME} IMAGE_TAG=${IMAGE_TAG} \
+                SERVER_PORT=${SERVER_PORT:-3000} NODE_ENV=${NODE_ENV:-production} \
+                DB_USER=${DB_USER} DB_PASSWORD=${DB_PASSWORD} DB_NAME=${DB_NAME} \
+                REDIS_PASSWORD=${REDIS_PASSWORD} \
+                DB_POOL_MAX=${DB_POOL_MAX:-10} DB_IDLE_TIMEOUT_MS=${DB_IDLE_TIMEOUT_MS:-30000} DB_CONNECTION_TIMEOUT_MS=${DB_CONNECTION_TIMEOUT_MS:-5000} \
+                TZ=${TZ:-Asia/Shanghai} &&
+
+                docker compose up -d --wait --wait-timeout ${COMPOSE_WAIT_TIMEOUT}
+              "
