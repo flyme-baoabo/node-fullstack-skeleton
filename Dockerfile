@@ -7,7 +7,7 @@
 #   - EJS 视图由 build-server.js 自动从 server/src 复制进 dist-server/views，也无需单独 COPY。
 # 基础镜像源前缀：Gitee 执行机访问 Docker Hub 常超时，默认改用国内可访问镜像源。
 # 如需还原官方源：docker build --build-arg BASE_IMAGE=node:20-alpine …
-ARG BASE_IMAGE=registry.aliyuncs.com/library/node:20‑alpine
+ARG BASE_IMAGE=registry.aliyuncs.com/library/node:20-alpine
 FROM ${BASE_IMAGE} AS builder
 WORKDIR /app
 # 先装依赖，利用包缓存
