@@ -58,7 +58,8 @@ project-root/                       # 当前仓库根目录（占位名，取决
 │  └─ build-server.js              # 服务端编译后置处理脚本（拷贝 .ejs/.json 等静态资源）
 ├─ .env                             # 本地环境变量（已 gitignore，不入库）
 ├─ .env.example                     # 环境变量模板
-├─ docker-compose.yml               # 全局容器编排（仅中间件）
+├─ docker-compose.yml               # 全局容器编排（生产 base + local 的公共配置）
+├─ docker-compose.local.yml         # 仅差异覆盖：把 fullstack-app 改为本地构建（与 base 合并用）
 └─ package.json
 ```
 
@@ -91,10 +92,10 @@ npm test                 # 运行测试
   docker build -t node-fullstack-skeleton --build-arg MODE=development .
   ```
 
-- **经 `docker-compose.local.yml`（`up -d --build`）**：`build.args.MODE` 已从环境变量/machine 插值，临时导出一个即可：
+- **经 `docker-compose.yml` + `docker-compose.local.yml`（`up -d --build`）**：`build.args.MODE` 已从环境变量/machine 插值，临时导出一个即可（local 是 override，必须与 base 一起加载）：
 
   ```bash
-  MODE=development docker compose -f docker-compose.local.yml up -d --build
+  MODE=development docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
   ```
 
 不传/不设 `MODE` 即生产镜像（无 sourcemap）。详见 [`docs/docker.md`](docs/docker.md)。
