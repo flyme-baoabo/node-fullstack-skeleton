@@ -122,7 +122,7 @@ proxy: {
 
 ## 7. 渲染中间件（fragment.middleware / render.middleware）⚡
 
-服务端采用 **express-ejs-layouts + 渲染中间件** 完成页面组装。三条铁律：**挂载顺序不能错**、**业务路由统一走 `res.renderPage`**、**局部片段走 `res.render('partials/…')`**。
+服务端采用**渲染中间件（fragment.middleware / render.middleware）**完成页面组装。三条铁律：**挂载顺序不能错**、**业务路由统一走 `res.renderPage`**、**局部片段走 `res.render('partials/…')`**。
 
 ### 7.1 职责分工
 
@@ -133,7 +133,7 @@ proxy: {
 | `protectPartialsRoute` | 同上 | 挂在 `/partials/*`，**禁止浏览器直接访问**片段接口：非 htmx 请求直接 `403` |
 | `renderPageMiddleware` | `server/src/middleware/render.middleware.ts` | 在 `res` 上挂载 `res.renderPage(view, options)`，按 `layouts` 数组**由内向外**组装多层布局外壳 |
 
-> 转发时 `res.render` 已被 express-layouts 包装，需用 `bind` 保留 `this === res`（内部依赖 `this.req.app`），避免 TypeError。
+> `res.renderPage` 全程 `layout:false`（`renderToHtml` promisify）逐层渲染；项目不注册 express‑ejs‑layout，无布局劫持，整体壳由 SPA 静态壳 `index.html` 承担。
 
 ### 7.2 挂载顺序（不可颠倒）
 
@@ -150,16 +150,16 @@ app.use(renderPageMiddleware);            // ④ 后挂 res.renderPage
 
 `res.renderPage` 由内向外执行，`layouts` 数组决定外壳套几层（缺省退化为单层 `app-layout`）：
 
-1. **第一层**：渲染内容视图本体，`layout:false` 拿到纯 html 字符串（回调）；
-2. **中间层**：逐个套上 `layouts` 里的外壳模板，都拿到字符串继续拼装；
-3. **最外层**：`res.render` 直接输出，`layout` 取 `outerFlag ? 'layouts/layout' : false`（传入 callback 监错并经 `next` 抛出）。
+1. **第一步**：渲染内容视图本体，`layout:false` 拿到纯 html 字符串（回调）；
+2. **后续层**：逐个套上 `layouts` 里的外壳模板，都拿到字符串继续拼装；
+3. **收尾**：全部外壳拼装完毕后 `res.send` 直接输出字符串。全局 `<html>/<head>` 骨架由 Vite 产出 `index.html` 提供，后端不再有 `layouts/layout`。
 
 | 场景 | 内容 -> | 外壳 -> | 外层布局 |
 |---|---|---|---|
-| 整页（缺省 `pageLayout` 即 true） | 内容视图（`index` / `listPage`…） | `app-layout.ejs`（注入 `outletContent`） | 套 `layouts/layout`（全局 body 骨架） |
-| 片段（`pageLayout:false`，供 htmx `/page/body` 整块替换 `#root`） | 内容视图 | `app-layout.ejs` | 不套（`layout:false`） |
+| 整页（首屏 / 整页导航） | 内容视图（`index` / `listPage`…） | `app-layout.ejs`（注入 `outletContent`） | 由 SPA 静态壳 `index.html` 承载（无 EJS 外层壳） |
+| 片段（供 htmx `/page/body` 整块替换 `#root`） | 内容视图 | `app-layout.ejs` | 由 SPA 静态壳承载 |
 
-`outerFlag = useOuterEjsLayout ?? pageLayout ?? true`（`useOuterEjsLayout` > `pageLayout` > 默认 `true`）。
+> 壳层由 `layouts` 数组决定（缺省单层 `app-layout`）。
 
 - **新增页面**：只要加一个内容视图（如 `listPage.ejs`）并在 `PAGE_META` 登记，无需改中间件。
 - **业务路由禁止手写 `layout:false` / 手动换壳** —— 一律用 `res.renderPage`。
@@ -170,13 +170,13 @@ app.use(renderPageMiddleware);            // ④ 后挂 res.renderPage
 
 | 场景 | 用 | 为什么 |
 |---|---|---|
-| 整页（首屏 / 整页导航，如 `pages.js`） | `res.renderPage(meta.view, {...})` | 需要完整页面 = 内容 + app-layout + layout |
-| 语言切换 `/page/body`（`locale.js`） | `res.renderPage(..., { pageLayout:false })` | 前端要整块替换 `#root`，而 `#root` 内正是「app-layout 外壳 + 内容」——**需要带壳**，但不要 `layout`（`<html>/<head>/<body>` 那层） |
+| 整页（首屏 / 整页导航，如 `pages.js`） | `res.renderPage(meta.view, {...})` | 需要完整页面 = app-layout 外壳 + 内容，整体注入 SPA 静态壳 `index.html` |
+| 语言切换 `/page/body`（`locale.js`） | `res.renderPage(meta.view, {...})` | 前端要整块替换 `#root`，而 `#root` 内正是「app-layout 外壳 + 内容」——整块带壳替换即可（`<html>/<head>` 已由 SPA 壳提供） |
 | 局部片段（待办增删改，`partials/item`、`partials/list`） | `res.render('partials/…', ...)` | 只要一个列表元素，不沾外壳；fragment 会**自动注入 `layout:false` 绕开布局** |
 
 **例外的直觉纠偏 —— 为什么 `/page/body` 是 `renderPage` 而不是 `res.render`？**
 
-不是因为「它是语言切换」，而是因为它要替换整个 `#root`，而 `#root` 里装的正是 `app-layout` 外壳（header + `#outlet` + footer）。若用 `res.render('index', {layout:false})` 只会得到纯内容，替换后 header/footer 都会消失。所以它必须走 `renderPage` 组装出「内容 + app-layout 外壳」，再靠 `pageLayout:false` 切掉最外层 `layout`。语言切换只是触发时机，不是用 `renderPage` 的根因。
+不是因为「它是语言切换」，而是因为它要替换整个 `#root`，而 `#root` 里装的正是 `app-layout` 外壳（header + `#outlet` + footer）。若用 `res.render('index', {...})` 只会得到纯内容，替换后 header/footer 都会消失。所以它必须走 `renderPage` 组装出「内容 + app-layout 外壳」，供 htmx 整块替换 `#root`。语言切换只是触发时机，不是用 `renderPage` 的根因。
 
 **一句话记法：**
 - 要 **app-layout 外壳**（整页或带壳重绘）→ `renderPage`

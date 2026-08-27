@@ -2,9 +2,9 @@ import { PAGE_PREFIX } from './constants.js';
 
 /**
  * 页面注册表：URL 路径 -> 页面内容视图 + 标题。
- * 渲染链由 res.renderPage 统一处理（内容 -> app-layout -> layout.ejs）。
+ * 渲染链由 res.renderPage 统一处理（内容 -> app-layout 应用外壳，且注入进 SPA 静态壳）。
  *
- * 语言切换 /body 靠它按当前 path 找到对应视图，保证无感切换后重绘的是“当前页”。
+ * 语言切换 /body 靠它按当前 path 找到对应视图，从而触发无感切换后重绘的是"当前页"。
  * 新增页面（/signin、/signup…）只需在此登记，整页路由与 /body 重绘自动生效。
  */
 

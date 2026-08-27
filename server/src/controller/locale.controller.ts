@@ -34,7 +34,7 @@ export async function changeLanguage(req: Request, res: Response): Promise<void>
 }
 
 /**
- * GET /body — 语言无感切换：按当前 path 重绘 app-layout 片段（不套外层 layout.ejs），
+ * GET /body — 语言无感切换：按当前 path 重绘 app-layout 片段（不套其他壳，由 SPA 静态壳承载），
  * 供 htmx 整块替换 #root。前端会带 ?path=<location.pathname>，据此还原“当前页”。
  */
 export async function renderBody(req: Request, res: Response): Promise<void> {
@@ -48,6 +48,5 @@ export async function renderBody(req: Request, res: Response): Promise<void> {
         i18nJson,
         // 纯 SPA：/body 的 path 参带 /page 前缀，转成浏览器路径('/'、'/list')供 nav 高亮
         currentPage: toClientPath(ctx.query.path || '/'),
-        pageLayout: false,
     });
 }

@@ -16,7 +16,7 @@ router.get(`${API_PREFIX}/i18n`, asyncHandler(getI18n));
 // 语言切换（前端发后拿到当前语言包，更新前端 I18n 字典）
 router.post(`${API_PREFIX}/change-language`, asyncHandler(changeLanguage));
 
-// 语言无感切换：按当前 path 重绘 app-layout 片段（不套外层 layout.ejs），供 htmx 整块替换 #root。
+// 语言无感切换：按当前 path 重绘 app-layout 片段（由 SPA 静态壳承载），供 htmx 整块替换 #root。
 router.get(`${PAGE_PREFIX}/body`, asyncHandler(renderBody));
 
 export { router as localeRouter };

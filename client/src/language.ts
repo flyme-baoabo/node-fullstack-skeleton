@@ -143,7 +143,7 @@ document.body.addEventListener('htmx:afterSwap', () => {
 });
 
 window.addEventListener('DOMContentLoaded', async () => {
-    // 纯 SPA：shell(index.html) 是 Vite 输出的静态文件，无法像旧 SSR 那样由 layout.ejs 注入语言包。
+    // 纯 SPA：shell(index.html) 是 Vite 输出的静态文件，无法像旧 SSR 那样由服务端模板注入语言包。
     // 因此首屏由本端向 GET /api/i18n 拉取「当前语言」的语言包，注入 window.I18n 供前端 t() 使用。
     // 页面正文文案由服务端 EJS 渲染，不依赖此注入；这里只服务前端 JS 内的 t()（如 toast）。
     

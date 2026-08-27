@@ -13,7 +13,7 @@
 | 层 | 选型 | 说明 |
 |---|---|---|
 | 后端框架 | Express 5 | 服务端渲染 API，返回完整页面或局部片段 |
-| 模板引擎 | EJS + express-ejs-layouts | 布局 / partial 拆分 |
+| 模板引擎 | EJS | 应用外壳 `app-layout.ejs` + partial / page 拆分 |
 | 前端交互 | htmx 2 | 通过 `hx-*` 属性做局部交换 |
 | 样式 | Tailwind CSS | utility-first，按需生成，和模板类名兼容 |
 | 构建 / HMR | Vite 8 | 双端口 dev server；Vite 提供 SPA shell、模块 transform 与 HMR |
@@ -211,7 +211,7 @@ nonExplicitSupportedLngs: true,     // 允许“纯语言码”（如 zh / en）
 
 ### 页内结构约定
 
-得益于 `app-layout.ejs` + `#root` 的页面结构，语言切换只需让服务端用对应语言包重渲染当前页面的带壳片段（`/page/body` 路由，`pageLayout:false` 不套最外层 `layout`），取下整块 `#root` 内容替换即可，无需刷新浏览器。
+得益于 `app-layout.ejs` + `#root` 的页面结构，语言切换只需让服务端用对应语言包重渲染当前页面的带壳片段（`/page/body` 路由），取下整块 `root` 内容替换即可，无需刷新页面；全局 `<html>/<head>` 壳由 Vite 产出的 `index.html` 提供。
 
 > 语言包以 `window.I18n` 注入供前端使用；页面正文由 htmx 局部替换，其余脚本（htmx、样式）不重复加载。
 
@@ -237,9 +237,9 @@ nonExplicitSupportedLngs: true,     // 允许“纯语言码”（如 zh / en）
 
 页面组装由安装于 `server/src/middleware/` 的渲染中间件完成，业务路由只关心「要整页还是片段」：
 
-- **整页**：`res.renderPage(meta.view, { ... })` —— 内容 + `app-layout` 外壳 + 全局 `layout`。
-- **片段（无刷新重绘，如语言切换）**：`res.renderPage(..., { pageLayout: false })` —— 保留 `app-layout` 外壳但不套全局 `layout`。
-- **局部元素片段**（待办增删改）：`res.render('partials/…', ...)` —— 由 `fragment` 中间件**自动注入 `layout:false`**，无需手写。
+- **整页**：`res.renderPage(meta.view, { ... })` —— 内容 + `app-layout` 外壳，整体注入 SPA 静态壳 `index.html`。
+- **片段（无刷新重绘，如语言切换）**：`res.renderPage(meta.view, { ... })` —— 保留 `app-layout` 外壳，由 front end htmx 整块替换 `#root`。
+- **局部元素片段**（待办增删改）：`res.render('partials/…', ...)` —— 由 `fragment` 中间件**自动关闭外壳**，无需手写。
 
 相关文件与中间件：
 

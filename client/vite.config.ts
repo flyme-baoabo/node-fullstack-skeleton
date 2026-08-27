@@ -21,9 +21,9 @@ let reqId = 0; // 用于给每个请求分配唯一 id，便于日志追踪
 
 // 该项目的角色：为服务端渲染的 Express 应用编译前端资源（htmx 入口、CSS）
 // - dev: 独立 dev server（双端口），把「SSR 页面路由」代理到 Express 后端，前端模块交给 Vite transform
-// - build: 产出固定命名的 assets，供 EJS 布局直接引用
-//   · JS → dist-client/js/main.js（entryFileNames）
-//   · CSS → dist-client/style.css（cssCodeSplit:false，assets 资源位于 assets目录）
+// - build: 产出带 contenthash 的产物，由 Vite 生成的 index.html 自引（纯 SPA 架构，后端只做静态托管）
+//   · JS → dist-client/js/[name].[hash].js（entryFileNames）
+//   · CSS → dist-client/assets/style.[hash].css（cssCodeSplit:false + assetFileNames 归入 assets）
 
 // defineConfig 支持函数形式，Vite 会回调 { mode, command }（ConfigEnv）。
 // 构建时脚本 scripts/build-client.js 传入的 --mode 会作为这里的 mode，
@@ -82,21 +82,32 @@ export default defineConfig(({ mode }) => {
         build: {
             sourcemap: !isProdMode,   // production 无 map，其余有 map
             emptyOutDir: true,
-            // 关闭 css code-split，让样式汇总为单一 style.css，便于 EJS 布局 <link> 引用
+            // 关闭 css code-split，让样式汇总为单一 style 文件，由 Vite 生成的 index.html <link> 引用
             cssCodeSplit: false,
             rollupOptions: {
                 // 以 index.html 为 HTML 入口（Vite 自动解析其中 <script src="/src/main.ts"> 作 JS 入口），
-                // 产物才会正确输出 index.html + js/main.js + assets。
+                // 产物才会正确输出 index.html + js/ + assets/。
                 // ⚠️ 不能改成 'src/main.ts'：那样会丢掉 HTML 壳（index.html 不进产物，express.static 无壳可回退）。
                 // input 默认就是 index.html，显式写出以免误删。
                 input: 'index.html',
                 output: {
-                    //  产物布局：JS 进 js/，CSS 等资源进 assets/ 
-                    entryFileNames: 'js/main.js',
-                    // 与 entryFileNames / assetFileNames 一致：固定名、不带 contenthash，
-                    // 保证文件名可预测、EJS 布局可直接写死引用（本项目无动态 import，实际不产出 chunk）
-                    chunkFileNames: 'js/[name].js',
-                    assetFileNames: 'assets/[name][extname]',
+                    // 产物布局：JS 进 js/，CSS 等资源进 assets/
+                    // 统一采用 [name].[hash] 命名，contenthash 由内容决定，利于浏览器长期缓存；
+                    // 文件名不必写死，由 Vite 生成的 index.html 内 <script>/<link> 自动引用。
+                    // manualChunks 把 node_modules 里的依赖按库名归入手动 vendor chunk：
+                    //   axios→axios-vendor / htmx→htmx-vendor / 其余→common-vendor
+                    // 归入手动 chunk 的模块会被合并成具名 chunk（走 chunkFileNames），
+                    // 并在 index.html 里以独立 <script> 静态引用（不再按需动态加载）。
+                    entryFileNames: 'js/[name].[hash].js',
+                    chunkFileNames: 'js/[name].[hash].js',
+                    assetFileNames: 'assets/[name].[hash].[ext]',
+                    manualChunks(id) {
+                        if (id.includes('node_modules')) {
+                            if (id.includes('axios')) return 'axios-vendor';
+                            if (id.includes('htmx')) return 'htmx-vendor';
+                            return 'common-vendor';
+                        }
+                    }
                 },
             },
         },

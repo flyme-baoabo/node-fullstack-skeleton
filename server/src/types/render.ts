@@ -28,25 +28,11 @@ export interface LayoutLayer {
 export interface RenderPageOptions {
     /** 中间布局外壳数组，由内向外执行 */
     layouts?: LayoutLayer[];
-    /**
-     * 最后一层是否开启 express-ejs-layouts 外层 layout。
-     * true: 最后一层 res.render 传入 layout:'layouts'，最外层 layout.ejs 使用 <%- body %>
-     * false: 最后一层传入 layout:false，不套全局 layout。
-     */
-    useOuterEjsLayout?: boolean;
 
-    // 兼容旧接口参数
-    /** 兼容老参数：单中间壳模板名 */
+    /** 单中间壳模板名 */
     pageShell?: string;
+    /** 接收上一层输出内容的插槽变量名 */
     pageShellSlot?: string;
-    /**
-     * 兼容老参数：是否启用最外层全局 layout（layout.ejs）。缺省视为 true。
-     * 优先级用 useOuterEjsLayout > pageLayout > 默认 true 兜底。
-     * - true: 最外层外壳 res.render 传 layout:'layouts/layout'，输出完整骨架页。
-     * - false: 最外层外壳传 layout:false，输出仅「外壳+内容」的片段（无 html/head/body 骨架），
-     *     供 htmx /body 整块替换场景；勿用于整页导航，否则缺骨架裸页。
-     */
-    pageLayout?: boolean;
 
     /** 其余透传给模板的业务 locals */
     [key: string]: any;

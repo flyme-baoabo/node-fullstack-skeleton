@@ -8,7 +8,7 @@ import { API_PREFIX, PAGE_PREFIX } from '../constants.js';
  *
  * 职责（按挂载顺序）：
  *  1. `express.static`：把构建产物目录（dist-client）直接对外提供，
- *     命中 /js/main.js、/assets/style.css、index.html 等真实物理文件。
+ *     命中 index.html、js/*.js、assets/*.css 等真实物理文件。
  *  2. SPA fallback：static 未命中时，对「浏览器导航类 GET」兜底返回 index.html，
  *     让前端 SPA 路由器重新开机、按地址栏路径渲染对应页（解决刷新 /list 等深链 404）。
  *

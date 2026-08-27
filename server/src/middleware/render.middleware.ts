@@ -3,7 +3,7 @@ import type { LayoutLayer, RenderPageOptions } from '../types/render.js';
 
 /**
  * 将 res.render promisify，获取渲染后的html字符串
- * 注意：项目不要注册 express‑ejs‑layouts 中间件劫持，否则结果会被干扰
+ * 注意：本渲染链路全程不套外层布局（layout:false），完整 html 壳由 Vite 产出的 index.html 承担。
  */
 function renderToHtml(res: Response, view: string, locals: Record<string, any>): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -47,7 +47,7 @@ export default function renderPageMiddleware(req: Request, res: Response, next: 
 
         let stack: LayoutLayer[] = [...layouts];
 
-        // 兼容旧调用：不传layouts，使用 pageShell
+        // 缺省外壳：未传 layouts 时，用 pageShell/pageShellSlot 兜底为单层壳
         if (Array.isArray(layouts) && layouts.length === 0 && pageShell && pageShellSlot) {
             stack = [{ tplName: pageShell, slotKey: pageShellSlot }];
         }

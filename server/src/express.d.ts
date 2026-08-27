@@ -32,7 +32,7 @@ declare global {
              */
             isFragmentRequest(viewName: string): boolean;
             /**
-             * 一次性完成「内容 -> 中间壳 -> 外层 layout」多层嵌套渲染。
+             * 一次性完成「内容 -> 多个壳」多层嵌套渲染（如 app-layout 应用外壳注入 fragment），
              * 由 middleware/render.middleware.ts 挂载到 res。
              */
             renderPage(pageView: string, options: RenderPageOptions): Promise<void>;
