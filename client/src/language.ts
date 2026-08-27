@@ -1,7 +1,6 @@
 import { showToast, ToastVariant } from './toast';
 import { t } from './i18n';
 
-const htmx = window.htmx; // 直接从全局拿，避免 import 'htmx.org' 造成的重复实例化（htmx 内部是单例，但 import 会多次执行模块代码，导致事件绑定重复）。
 /**
  * 自定义语言切换下拉菜单。
  * 依赖 + 交互：
@@ -90,6 +89,7 @@ function initLanguageSwitcher(): void {
 
 
 async function switchLanguage(lang: string): Promise<void> {
+    const htmx = window.htmx;
     // 1. POST 设 cookie，并拿回 { i18nJson, isSuccess }
     try {
         const res = await fetch('/change-language', {
