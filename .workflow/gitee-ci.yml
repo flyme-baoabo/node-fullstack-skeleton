@@ -67,10 +67,11 @@ stages:
         name: ""
         displayName: 镜像构建并推送
         type: account            # account = 登录仓库后推送
-        repository: ${IMAGE_NAME}
+        # repository 写死完整地址，避免 build@docker 插件对 ${REGISTRY} 嵌套变量二次映射不展开的坑
+        repository: "crpi-1vp5deeta128cxtu.cn-beijing.personal.cr.aliyuncs.com/my-app-flyme/node-fullstack-skeleton"
         username: ${REGISTRY_USER}
         password: ${REGISTRY_PASSWORD}
-        # 用平台内置构建号（与官方模板一致）；直接写在此处即可展开（不经过 variables 中转）
+        # 用平台内置构建号（官方模板、验证过可展开）；直接写在此处（不经过 variables 中转）
         tag: ${GITEE_COMMIT}
         dockerfile: ./Dockerfile
         context: ""
