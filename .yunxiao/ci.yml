@@ -1,0 +1,50 @@
+sources:
+  gitee_source:
+    type: git
+    name: Gitee源码
+    endpoint: https://gitee.com/flyme-baobao/node-fullstack-skeleton
+    branch: master
+    certificate:
+      type: serviceConnection
+      serviceConnection: "jro4b9ac34r6534u"
+stages:
+  acr_docker_build_stage:
+    name: "构建镜像"
+    jobs:
+      acr_docker_build_job:
+        name: "镜像构建并推送至ACR个人版"
+        runsOn:
+          group: public/cn-beijing
+          container: build-steps-public-registry.cn-beijing.cr.aliyuncs.com/build-steps/alinux3:latest
+        steps:
+          acr_docker_build_step:
+            step: DockerBuildPushACR
+            name: "镜像构建并推送至ACR个人版"
+            with:
+              serviceConnection: yk3n44swtbuexwyy
+              artifact: my_image
+              region: cn-beijing
+              dockerRegistry: crpi-1vp5deeta128cxtu.cn-beijing.personal.cr.aliyuncs.com/my-app-flyme/node-fullstack-skeleton
+              dockerTag: 1.0
+              dockerfilePath: Dockerfile
+              cacheType: remote
+  # kubectl_apply_stage:
+  #   name: "部署"
+  #   jobs:
+  #     kubectl_apply_job:
+  #       name: "Kubernetes发布"
+  #       runsOn:
+  #         group: public/cn-beijing
+  #         container: build-steps-public-registry.cn-beijing.cr.aliyuncs.com/build-steps/alinux3:latest
+  #       steps:
+  #         kubectl_apply:
+  #           step: KubectlApply
+  #           name: "Kubectl 发布"
+  #           with:
+  #             kubernetesCluster: <your-kubernetes-id>
+  #             kubectlVersion: "1.27.9"
+  #             namespace: default
+  #             yamlPath: app-configs/manifest-app
+  #             variables:
+  #               - key: image
+  #                 value: $[stages.acr_docker_build_stage.acr_docker_build_job.acr_docker_build_step.artifacts.my_image]
