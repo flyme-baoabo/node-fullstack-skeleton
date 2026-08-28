@@ -64,19 +64,15 @@ stages:
     steps:
       # Gitee Go 内置 docker 构建插件：构建 Dockerfile 镜像并推送（唯一能执行、有日志的插件）
       # 不用 shell@agent：该插件类型在 Gitee Go 不可用，会直接被 schema 拒绝（无构建日志、立即失败）。
-      # username 写死明文（非敏感），password 走 secret ${REGISTRY_PASSWORD}——都已验证可解析。
       - step: build@docker
         name: ""
         displayName: 镜像构建并推送
         type: account                     # account = 登录仓库后推送
         # repository 写死完整地址，避免 build@docker 对 ${REGISTRY} 嵌套变量二次映射不展开的坑
-        repository: "crpi-1vp5deeta128cxtu.cn-beijing.personal.cr.aliyuncs.com/my-app-flyme/node-fullstack-skeleton"
-        username: "flyme0208"             # ACR 访问凭证用户名，明文固定
+        repository: ${IMAGE_NAME}
+        username: ${REGISTRY_USER}             # ACR 访问凭证用户名，明文固定
         password: ${REGISTRY_PASSWORD}    # ACR 访问凭证固定密码，secret 展开
-        # 用 latest 避开 build@docker 插件把 tag 拼成 “仓库/tag”(斜杠) 而非 “仓库:tag”(冒号) 的坑。
-        # 该 bug 会拼出 .../node-fullstack-skeleton/13 → 推一个不存在的仓库 → insufficient_scope。
-        # latest 走规范的 :latest 拼法才能推成功。
-        # tag: latest
+        tag: ${IMAGE_TAG}
         dockerfile: ./Dockerfile
         context: ""
         artifacts: ""
