@@ -21,10 +21,6 @@ COPY server ./server
 COPY client ./client
 COPY scripts ./scripts
 # 同时编译后端 + 构建前端（产出 dist-server 与 dist-client）。
-# mode 由 Docker build 时经 ARG MODE 注入（命中 build 时间）：
-#   docker build --build-arg MODE=development …
-# 默认 production（vite build 默认即 production，无 sourcemap）。
-ARG MODE=production
 RUN npm run build:all
 
 # ——— 运行阶段：全新的空白镜像，只保留「能跑起来的东西」———
