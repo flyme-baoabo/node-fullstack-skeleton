@@ -24,42 +24,66 @@
 ```
 project-root/                       # 当前仓库根目录（占位名，取决于 clone 目录名）
 ├─ server/                          # Node 后端业务
-│  └─ src/
-│     ├─ adapter/                   # 基础设施适配层（把外部能力接入业务）
-│     ├─ controller/                # HTTP 控制器
-│     ├─ service/                   # 业务服务层
-│     ├─ repository/                # 纯业务数据 CRUD 封装（本地 JSON 文件读写）
-│     │  └─ todo.repository.ts      #   待办数据读 / 写 / 查，暂用 data/todos.json，无 Prisma 底层基建
-│     ├─ db/                        # 后端数据库底层基建目录
-│     │  ├─ prisma/                 # Prisma 专属目录
-│     │  │  ├─ schema.prisma        #   数据表模型、关联关系、数据库数据源配置
-│     │  │  └─ migrations/          #   数据库版本迁移脚本集合
-│     │  ├─ index.ts                # 数据库主实例初始化、连接池统一管理
-│     │  ├─ redis.ts                # Redis 底层连接与配置
-│     │  └─ db.config.ts            # 数据库全局参数配置
-│     ├─ dto/                       # 数据传输对象
-│     ├─ routes/                    # 业务路由
-│     ├─ utils/                     # 通用工具
-│     ├─ views/                     # 服务端视图模板层
-│     │  ├─ layouts/                #   global 布局骨架
-│     │  ├─ pages/                  #   业务页面模板
-│     │  └─ partials/               #   公共片段组件
-│     └─ …其余既有文件（app.ts / index.ts / i18n / middleware / runtime / locales…）
+│  ├─ src/
+│  │  ├─ adapter/                   # 基础设施适配层（把外部能力接入业务）
+│  │  ├─ controller/                # HTTP 控制器
+│  │  ├─ service/                   # 业务服务层
+│  │  ├─ repository/                # 纯业务数据 CRUD 封装（本地 JSON 文件读写）
+│  │  │  └─ todo.repository.ts      #   待办数据读 / 写 / 查，暂用 data/todos.json，无 Prisma 底层基建
+│  │  ├─ db/                        # 后端数据库底层基建目录
+│  │  │  ├─ prisma/                 # Prisma 专属目录
+│  │  │  │  ├─ schema.prisma        #   数据表模型、关联关系、数据库数据源配置
+│  │  │  │  └─ migrations/          #   数据库版本迁移脚本集合
+│  │  │  ├─ index.ts                # 数据库主实例初始化、连接池统一管理
+│  │  │  ├─ redis.ts                # Redis 底层连接与配置
+│  │  │  └─ db.config.ts            # 数据库全局参数配置
+│  │  ├─ middleware/                # Express 中间件（渲染/片段/i18n/requestId/错误兜底）
+│  │  ├─ i18n/                      # i18n 配置与错误码词典（error-codes.ts）
+│  │  ├─ locales/                   # 语言包（zh-CN.json / en-US.json）
+│  │  ├─ runtime/                   # 进程级兜底（processErrors / shutdownRuntime）
+│  │  ├─ routes/                    # 业务路由装配
+│  │  ├─ dto/                       # 数据传输对象
+│  │  ├─ utils/                     # 通用工具（asyncHandler / logger / gracefulShutdown…）
+│  │  ├─ views/                     # 服务端视图模板层
+│  │  │  ├─ layouts/                #   global 布局骨架
+│  │  │  ├─ pages/                  #   业务页面模板
+│  │  │  └─ partials/               #   公共片段组件
+│  │  ├─ legacy/                    # 旧版渲染脚本（保留对照）
+│  │  └─ …其余既有文件（app.ts / index.ts / routes.ts / paths.ts / types/…）
+│  └─ data/                         # 服务端本地数据（todos.json，运行期读写）
 ├─ client/                          # 前端源码：html / Sass / TS / 组件
 │  ├─ src/
 │  └─ public/
+├─ data/                            # 根级数据目录（todos.json，与 server/data 同步的样本数据）
 ├─ dist-client/                     # Vite 构建产物，供 server 读取
-├─ dist-server/                     # TSC 编译产物，服务端生产运行目录
-├─ Dockerfile                       # 后端服务镜像构建文件（仅用于后端部署）
-├─ vite.config.ts                   # 全局 Vite 构建配置（前后端不分离共用）
-├─ tsconfig.json                    # 全局 TS 基础配置（前后端共用）
-├─ tsconfig.server.json             # 服务端 TS 独立编译配置
+├─ dist-server/                     # TSC 编译产物，服务端生产运行目录（build:server 生成）
+├─ .github/workflows/               # GitHub Actions 工作流（CI 测试 + 跨平台同步）
+├─ .gitee/workflows/                # Gitee CI 配置（类似 GitHub Actions，个人公开版不可用）
+├─ .workflow/                       # 新版 Gitee Go 流水线
+├─ .yunxiao/                        # 云效 Flow 流水线（CI/CD，当前主力）
+│  ├─ ci.yml                        #   构建镜像 + 推送 ACR（DockerBuildPushACR，dockerTag=${CI_COMMIT_ID}）
+│  └─ deploy-ecs.yml                #   部署到 ECS（方案 A 注释保留 / 方案 B 启用：ECS 内 git pull + compose）
+├─ docs/                            # 项目文档
+│  ├─ docker.md                     #   Docker 部署与运维手册
+│  ├─ ci-cd-yunxiao.md              #   云效 CI/CD 笔记（构建/推送 ACR/ECS 部署规划）
+│  ├─ development-standards.md      #   开发/提交/版本同步规范
+│  └─ knowledge/                    #   知识点备忘（docker-commands / http-content-negotiation…）
+├─ test/                            # 测试目录
+│  └─ routes/                       #   路由级测试（home.test.ts）
 ├─ scripts/
 │  └─ build-server.js               # 服务端编译后置处理脚本（拷贝 .ejs/.json 等静态资源）
+├─ Dockerfile                       # 后端服务镜像构建文件（仅用于后端部署）
+├─ vite.config.ts                   # 全局 Vite 构建配置（前后端不分离共用）
+├─ tsconfig.base.json               # TS 共享基础配置（被其余 tsconfig extends）
+├─ tsconfig.json                    # 全局 TS 基础配置（前后端共用）
+├─ tsconfig.server.json             # 服务端 TS 独立编译配置
 ├─ .env                             # 本地环境变量（已 gitignore，不入库）
+├─ .env.development                 # 开发环境变量（已 gitignore，不入库）
 ├─ .env.example                     # 环境变量模板
-├─ docker-compose.yml               # 全局容器编排（生产 base + local 的公共配置）
+├─ docker-compose.yml               # 全局容器编排（生产 base + local/test 的公共配置）
 ├─ docker-compose.local.yml         # 仅差异覆盖：把 fullstack-app 改为本地构建（与 base 合并用）
+├─ docker-compose.test.yml          # 仅差异覆盖：把 fullstack-app 改为已 push 的镜像（与 base 合并用）
+├─ docker-compose.develop.yml       # 仅中间件（Postgres + Redis），本机跑 Node 用
 └─ package.json
 ```
 
