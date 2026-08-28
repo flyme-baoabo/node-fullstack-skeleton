@@ -11,14 +11,15 @@ volumes:
 
 services:
   fullstack-app:
-    # 本地部署Docker环境：使用生产简化版 Dockerfile.prod 构建镜像
-    # Dockerfile.prod 内部直接 RUN npm run build:all（前端默认 production → 无 sourcemap），
-    # 不再需要 MODE 构建参数；若需要带 sourcemap 的调试镜像，改用现有 Dockerfile + docker build --build-arg MODE=development
+    # 本地部署：与生产 CI 共用同一个 Dockerfile，由 MODE 构建参数控制前端产物形态
+    #   MODE=production（默认）→ vite production 构建，无 sourcemap（等价原 build:all）
+    #   MODE=development       → 产物带 .map sourcemap，便于浏览器 DevTools 调试原始 TS 源码
+    # 切换示例：MODE=development docker compose -f docker-compose.local.yml up -d --build
     build:
       context: .
       args:
         MODE: ${MODE:-production}
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile
     ports:
       - "${SERVER_PORT}:3000"
     # 服务级环境变量（仅Node业务生效）

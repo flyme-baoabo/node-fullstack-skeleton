@@ -1,6 +1,8 @@
 # 单镜像构建整个项目（SPA 模式，单端口部署）：
 #   - build:server —— tsc 编译 TS → dist-server，build-server.js 把 .ejs/.json 等静态资源拷进 dist-server
-#   - build:client —— vite build 产出 dist-client 作为唯一浏览器入口
+#   - build:client —— vite build 产出 dist-client 作为唯一浏览器入口，
+#     构建模式由 ARG MODE 注入（production 无 sourcemap / development 带 sourcemap），
+#     一份 Dockerfile 同时服务生产 CI 与本地调试镜像，不再需要单独的 Dockerfile.dev
 #
 # SPA 单端口运行时形态（唯一进程 node dist-server/index.js 承担全部）：
 #   · express.static(dist-client)  托管 index.html / js / assets 静态资源
@@ -20,8 +22,17 @@ COPY tsconfig.base.json tsconfig.json tsconfig.server.json ./
 COPY server ./server
 COPY client ./client
 COPY scripts ./scripts
-# 同时编译后端 + 构建前端（产出 dist-server 与 dist-client）。
-RUN npm run build:all
+# 编译后端 + 构建前端（产出 dist-server 与 dist-client）。
+RUN npm run build:server
+# MODE 由构建时注入（docker build --build-arg MODE=… / compose build.args）：
+#   · production（默认）→ 等价原 build:all：vite 以 production 模式构建，产物无 sourcemap
+#   · development        → vite.config.ts 按 mode 开启 build.sourcemap，产物带 .map，
+#                          便于浏览器 DevTools 调试原始 TS 源码（本地调试镜像用）
+# 拆成两条 RUN：MODE 变化只会失效第二条（前端构建）层缓存，build:server 层仍可复用。
+# scripts/build-client.js 已处理 cwd 切换与 outDir 落点（项目根 dist-client），等价原 Dockerfile.dev 里的
+#   cd client && npx vite build --mode $MODE --outDir ../dist-client
+ARG MODE=production
+RUN npm run build:client -- --mode ${MODE}
 
 # ——— 运行阶段：全新的空白镜像，只保留「能跑起来的东西」———
 #   · 首个 FROM 阶段（builder）里的源码、devDependencies、node_modules 全部带不到这里，
