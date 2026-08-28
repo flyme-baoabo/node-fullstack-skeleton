@@ -76,7 +76,7 @@ stages:
         # 用 latest 避开 build@docker 插件把 tag 拼成 “仓库/tag”(斜杠) 而非 “仓库:tag”(冒号) 的坑。
         # 该 bug 会拼出 .../node-fullstack-skeleton/13 → 推一个不存在的仓库 → insufficient_scope。
         # latest 走规范的 :latest 拼法才能推成功。
-        tag: latest
+        # tag: latest
         dockerfile: ./Dockerfile
         context: ""
         artifacts: ""
