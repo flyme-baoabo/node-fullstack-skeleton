@@ -1,5 +1,3 @@
-// import htmx from 'htmx.org';
-// import './mountHtmxLifecycle';
 import { PAGE_PREFIX } from './constants';
 
 

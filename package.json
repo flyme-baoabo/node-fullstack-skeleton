@@ -7,7 +7,7 @@
     "scripts": {
         "dev": "concurrently -k --names server,client --prefix-colors blue,green \"npm:dev:server\" \"npm:dev:client\"",
         "dev:server": "cross-env NODE_ENV=development node --watch-path=server --watch-preserve-output --import tsx server/src/index.ts",
-        "dev:client": "node scripts/dev-client.js",
+        "dev:client": "cross-env NODE_ENV=development node scripts/dev-client.js",
         "build:client": "node scripts/build-client.js",
         "build:client:dev": "node scripts/build-client.js --mode development",
         "build:server": "tsc -p tsconfig.server.json && node scripts/build-server.js",

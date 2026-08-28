@@ -72,19 +72,3 @@
         © <%= new Date().getFullYear() %> htmx-project · htmx + Express + Vite + Tailwind CSS
     </div>
 </footer>
-
-<!-- 骨架模板必须放在 #toast-slot 外部：showToast 会 replaceChildren 清空 slot，
-     若模板在内部会被一并删掉，导致第二次调用时拿不到模板。 -->
-<template id="toast-template">
-    <div class="pointer-events-auto toast-enter flex max-w-sm items-start gap-2 rounded-xl border px-4 py-3 text-sm shadow-lg">
-        <span class="min-w-0 flex-1 leading-snug" data-toast-msg></span>
-        <button type="button" class="shrink-0 cursor-pointer rounded p-0.5 text-gray-400 transition hover:text-gray-700"
-            aria-label="关闭" data-toast-close>✕</button>
-    </div>
-</template>
-
-<!-- 全局 Toast 槽位：fixed 定位钉住视口右上角，滚动不影响可见性。
-     由 client/src/toast.ts 克隆 #toast-template 并注入。 -->
-<div id="toast-slot" aria-live="polite"
-    class="pointer-events-none fixed top-4 right-4 z-[60] flex flex-col items-end gap-2">
-</div>

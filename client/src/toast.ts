@@ -3,8 +3,10 @@
  *
  * 只负责：showToast 弹出提示 + 自动消失 + ✕ 手动关闭。
  * 触发时机由 mountHtmxLifecycle.ts 决定（4xx/5xx、网络错误等）。
- * 容器挂在 app-layout.ejs 的 <div id="toast-slot">（fixed 定位，滚动不影响可见性）。
+ * 骨架按需从 templates.ts 加载，克隆后注入到 <div id="toast-slot">（fixed 定位）。
  */
+
+import { loadTemplate } from './templates';
 
 /** toast 变体（错误 / 一般提示）：导出常量 + 派生类型，供外部复用 */
 export const ToastVariant = {
@@ -14,7 +16,7 @@ export const ToastVariant = {
 
 export type ToastVariant = (typeof ToastVariant)[keyof typeof ToastVariant];
 
-/** 不同变体的配色类（骨架布局在 app-layout.ejs 的 <template> 里） */
+/** 不同变体的配色类（骨架在 templates/toast.html 里） */
 const VARIANT_CLASSES: Record<ToastVariant, string> = {
     error: 'border-rose-200 bg-rose-50 text-rose-700',
     success: 'border-emerald-200 bg-emerald-50 text-emerald-700',
@@ -27,16 +29,15 @@ let dismissTimer: number | undefined;
 
 /**
  * 弹出全局 toast。连续调用会替换上一条，不堆叠。
- * 骨架克隆自 app-layout.ejs 的 #toast-template，这里只切配色 + 填文案。
+ * 骨架按需从 #toast-template 加载，克隆后只切配色 + 填文案。
  * @param message 提示文案
  * @param variant error = 红色（错误）/ success = 绿色（一般提示）
  */
-export function showToast(
+export async function showToast(
     message: string,
     variant: ToastVariant = 'error',
-): void {
-    const source = document.querySelector<HTMLTemplateElement>('#toast-template');
-    if (!source) return;
+): Promise<void> {
+    const source = await loadTemplate('toast-template');
 
     const slot = document.querySelector<HTMLElement>('#toast-slot');
     if (!slot) return;

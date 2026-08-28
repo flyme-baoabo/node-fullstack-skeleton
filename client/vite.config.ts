@@ -1,5 +1,7 @@
 import dotenv from 'dotenv';
 import { defineConfig } from 'vite';
+import { fileURLToPath } from 'url';
+import path from 'path';
 import tailwindcss from '@tailwindcss/vite';
 
 // 常量(扩展名分组/大正则)与工具函数(public 静态检测)分别独立，keep vite.config.ts 干净
@@ -10,8 +12,10 @@ import tailwindcss from '@tailwindcss/vite';
 const isProd = process.env.NODE_ENV === 'production';
 
 if (!isProd) {
+    // 相对路径会因 dev/build 脚本 chdir 到 client/ 而失效，必须基于本文件位置定位根目录
+    const configDir = path.dirname(fileURLToPath(import.meta.url));
     // 开发环境：读取 .env，加载到 process.env，不覆盖 已有的环境变量（例如 docker-compose.yml 注入的），避免覆盖掉 compose 注入的端口等配置
-    dotenv.config({ path: '.env.development', override: false });
+    dotenv.config({ path: path.resolve(configDir, '../.env.development'), override: false });
 }
 // env 驱动端口：VITE_PORT(前端默认5173)、 SERVER_PORT(代理目标/后端默认3006)
 const vitePort = Number(process.env.VITE_PORT) || 5173;
