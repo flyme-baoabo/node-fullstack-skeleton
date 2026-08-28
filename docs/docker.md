@@ -1,7 +1,7 @@
 # Docker 部署与运维手册（Docker Operations Manual）
 
 > 本文档收录本仓库 Docker 相关的**核心校验命令、本地标准启动工作流、日常运维命令**。
-> 对应 3 份 Compose 文件：`docker-compose.yml`（生产，镜像由 CI 提前构建）、`docker-compose.local.yml`（本地全容器模拟生产）、`docker-compose.develop.yml`（仅中间件，本机跑 Node）。
+> 对应 4 份 Compose 文件：`docker-compose.yml`（生产基座+本地 base，镜像由 CI 提前构建）、`docker-compose.local.yml`（*差异覆盖*，仅将 `fullstack-app` 改为本地构建，需与 `docker-compose.yml` 组合使用）、`docker-compose.test.yml`（*差异覆盖*，仅将 `fullstack-app` 改为拉取已 push 的镜像，需与 `docker-compose.yml` 组合使用）、`docker-compose.develop.yml`（仅中间件，本机跑 Node）。
 
 ---
 
@@ -50,20 +50,35 @@ docker compose -f docker-compose.develop.yml up -d
 
 # ---- 2. 本地全容器模拟生产（完整容器环境、本地构建镜像）----
 #    适用：上线前本地全量自测、复现线上生产环境
-#    fullstack-app 含 build: .，用 --build 基于本地 Dockerfile 构建镜像
-docker compose -f docker-compose.local.yml up -d --build
+#    local 是 override：必须与 base(docker-compose.yml) 合并，-f 后面的文件覆盖前面的 key。
+#    公共内容（postgres/redis/ports/environment/healthcheck…）全部由 base 提供，local 只把
+#    fullstack-app 从“CI 预构建镜像”覆盖为“本地 Dockerfile 构建”。
+docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
 
 #     默认按生产 mode 构建（vite build 无 sourcemap）。
 #     需要带调试信息（sourcemap）时，临时注入 MODE 构建参数：
-MODE=development docker compose -f docker-compose.local.yml up -d --build
+MODE=development docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
 
-# ---- 3. 停止本地全容器模拟生产环境（保留数据卷）----
-docker compose -f docker-compose.local.yml down
+#     ⚠️ 务必保留 `--build`：`up` 不带 --build 会**直接复用本地已有的 image tag（如
+#     node-fullstack-skeleton:local）**，不重新走 Dockerfile 构建，改了 Dockerfile 却不
+#     带 --build 就会用到旧镜像（“改了没生效”的常见坑）。带 --build 才保证每次重建。
 
-# ---- 4. 彻底清空本地容器数据（测试重置使用，谨慎操作）----
-docker compose -f docker-compose.local.yml down -v
+# ---- 3. 本地验证「已 push 的镜像」（拉取测试，不重新构建）----
+# 适用：验证 CI 构建推送的镜像能否在本地整套跑起来（不改代码，纯验证镜像可用性）
+# 与 local 同理：test 也是 override，仅把 fullstack-app.image 覆盖为 .env 的
+# TEST_IMAGE_NAME（前置：在 .env 配完整镜像名含 tag，漏配会空值报错）。
+docker compose -f docker-compose.yml -f docker-compose-test.yml up -d
 
-# ---- 5. 查询容器里面的环境变量 ----
+# ---- 4. 停止 local / test 栈（保留数据卷）----
+#    local 与 test 用的都是 base + 各自 override，停哪套记得带对应文件。
+docker compose -f docker-compose.yml -f docker-compose.local.yml down
+docker compose -f docker-compose.yml -f docker-compose-test.yml down
+
+# ---- 5. 彻底清空 local / test 数据（测试重置使用，谨慎操作）----
+docker compose -f docker-compose.yml -f docker-compose.local.yml down -v
+docker compose -f docker-compose.yml -f docker-compose-test.yml down -v
+
+# ---- 6. 查询容器里面的环境变量 ----
 docker ps
 # 使用上一步 找到的 NAMES 字段 替换 POD_NAME (下面2个都行)
 docker exec ${POD_NAME} printenv
@@ -75,9 +90,10 @@ docker inspect ${POD_NAME} -f '{{range .Config.Env}}{{.}}{{"\n"}}{{end}}'
 | 场景 | 用哪个文件 | 命令 | Node 位置 | DB/Redis 访问地址 |
 |---|---|---|---|---|
 | 日常开发（本机跑 Node） | `docker-compose.develop.yml` | `up -d` | 宿主机 | `127.0.0.1`（须在 Node 侧适配）|
-| 本地全容器模拟生产 | `docker-compose.local.yml` | `up -d --build` | 容器 | `postgres` / `redis`（服务名）|
-| 停止模拟生产 | `docker-compose.local.yml` | `down` | — | — |
-| 重置数据 | `docker-compose.local.yml` | `down -v` | — | — |
+| 本地全容器模拟生产 | `docker-compose.yml` + `-f docker-compose.local.yml` | `up -d --build` | 容器 | `postgres` / `redis`（服务名）|
+| 验证已 push 镜像 | `docker-compose.yml` + `-f docker-compose-test.yml` | `up -d` | 容器 | `postgres` / `redis`（服务名）|
+| 停止 local / test 栈 | base+local 或 base+test（与启动时一致） | `down` | — | — |
+| 重置数据 | base+local 或 base+test（与启动时一致） | `down -v` | — | — |
 
 > ⚠️ `docker-compose.develop.yml` 只有 Postgres + Redis；此时 Node 跑在宿主机，`.env` 里的 `DB_HOST` / `REDIS_HOST` 需为 `127.0.0.1` 并经 Node 侧适配，容器模式才用服务名 `postgres`/`redis`。
 
@@ -101,6 +117,7 @@ docker compose down -v
 
 | 文件 | 作用 | image 来源 | Node 进程位置 |
 |---|---|---|---|
-| `docker-compose.yml` | 生产部署 | `${IMAGE_NAME}:${CI_COMMIT_SHA}`（CI 预构建） | 容器 |
-| `docker-compose.local.yml` | 本地全容器模拟生产 | `build: .` 本地构建 | 容器 |
+| `docker-compose.yml` | 生产部署 + 本地全容器模拟生产的 base | `${IMAGE_NAME}:${IMAGE_TAG}`（CI 预构建） | 容器 |
+| `docker-compose.local.yml` | 差异覆盖（仅把 `fullstack-app` 改为本地构建） | `build: .` 本地构建 | 容器 |
+| `docker-compose-test.yml` | 差异覆盖（仅把 `fullstack-app` 改为拉取已 push 的镜像） | `${TEST_IMAGE_NAME}`（.env 指定镜像） | 容器 |
 | `docker-compose.develop.yml` | 纯开发中间件 | 官方镜像 | 宿主机 |
