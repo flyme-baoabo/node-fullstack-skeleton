@@ -12,11 +12,13 @@
 | 源码源 | Gitee（`type: git` 通用 Git 源 + Gitee 服务连接） |
 | 构建镜像+推送 | `DockerBuildPushACR`（云效内置步骤，专用于 ACR） |
 | 目标 ACR | `crpi-1vp5deeta128cxtu.cn-beijing.personal.cr.aliyuncs.com/my-app-flyme/node-fullstack-skeleton` |
+| 本地验证镜像 | `docker-compose.yml` + `-f docker-compose-test.yml`（.env 配 `TEST_IMAGE_NAME` 拉取验证） |
 | 部署 | 暂无 ECS/K8s，`kubectl_apply_stage` 已注释 |
 
 ## 运行状态
 
 - ✅ **2026-08-28**:`DockerBuildPushACR` 步骤运行成功 —— **镜像构建 + 推送 ACR 已打通**，证明云效链路可行。
+- ✅ **2026-08-28**:**本地拉取验证也走通** —— 用 `docker-compose.yml` + `-f docker-compose-test.yml`（.env 配 `TEST_IMAGE_NAME`）在本地把已 push 的镜像整套拉起来，确认镜像可落地运行。至此「**构建 → 推送 ACR → 本地验证**」闭环完成，只剩部署阶段。
 - 推送确认完成后，可在 ACR 控制台该镜像仓库的「镜像版本」里看到对应 tag 的镜像。
 
 ## 为什么放弃 Gitee Go 的镜像推送
@@ -199,3 +201,34 @@ steps:
 - [ ] 暂用公共构建 `DockerBuildPushACR` + `${CI_COMMIT_ID}`（短 hash）作为稳妥基线。
 - [ ] 恢复部署阶段（ECS 上 `docker compose up`，`.yunxiao/ci.yml` 里 kubectl 注释先留着）。
 - [ ] 确认 Gitee 默认分支是 `master`，`branch: master` 才能拉到代码。
+
+### ECS 部署前置检查清单（买了 ECS 后按序核对）
+
+> 对应 `.yunxiao/deploy-ecs.yml`（方案 B 启用、方案 A 注释保留）。逐项打勾后再跑流水线，避免「配置完才报错」。
+
+#### 1. 云效「变量/凭据」配置齐全
+
+| 变量 | 说明 |
+|---|---|
+| `ACR_REGISTRY` | 完整 ACR 地址：`crpi-1vp5deeta128cxtu.cn-beijing.personal.cr.aliyuncs.com/my-app-flyme/node-fullstack-skeleton` |
+| `ACR_USERNAME` / `ACR_PASSWORD` | ACR 登录账号 / 密码（ECS 上 `docker login` 用） |
+| `ECS_HOST` / `ECS_USER` | ECS IP 或域名 / SSH 用户名 |
+| `ECS_SSH_PRIVATE_KEY` | ECS 登录 SSH 私钥（进「变量/凭据」，多行，勿落地仓库） |
+| `ECS_DEPLOY_DIR` | ECS 部署目录（方案 B 的 clone 目录） |
+| `REPO_URL` | Gitee 仓库地址（方案 B 用） |
+| `DEPLOY_VERSION` | （可选）分支名或 tag，缺省 `master` |
+
+#### 2. 核对 `sources` 的服务连接 ID
+
+`.yunxiao/deploy-ecs.yml` 里写的是 `serviceConnection: "jro4b9ac34r6534u"`。此 ID 需与云效「服务连接」里真实创建的 Gitee 连接一致——若对不上，`sources` 拉不到代码，流水线在第一步就失败。**建议运行前到云效「服务连接」确认该 ID，或直接引用于已跑通的 `.yunxiao/ci.yml` 所用的同一连接。**
+
+> ⚠️ 实录曾有另一个写法 `jro4b9ac34r63w4u`，结尾几位不一致，务必以云效后台实际 ID 为准。
+
+#### 3. ECS 侧前置
+
+- [ ] 已装 Docker Engine（`docker version` 通过）
+- [ ] 已装 Docker Compose 插件（`docker compose version` 通过）
+- [ ] 已配好 SSH 密钥登录（云效能用 `ECS_SSH_PRIVATE_KEY` 免密登录 `ECS_USER@ECS_HOST`）
+- [ ] 安全组放行所需端口（应用端口映射已在 compose 里声明的那几个）
+- [ ] `ECS_DEPLOY_DIR` 存在或可由脚本 `mkdir -p` 创建（方案 B 会自动建）
+- [ ] 首次部署方案 B 需 ECS 能拉到 Gitee（`REPO_URL` 可达，或配好 ECS 上的 Gitee 拉取凭据）
