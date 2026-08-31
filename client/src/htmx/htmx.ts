@@ -1,3 +1,5 @@
+import { mountHtmxLifecycle } from './mountHtmxLifecycle';
+
 /**
  * htmx 装配入口：加载 htmx.org + 挂载生命周期事件。
  *
@@ -9,11 +11,8 @@
  * @returns 已加载的 htmx 实例
  */
 export async function initHtmx(): Promise<HTMX> {
-    const [ { default: htmx }, { mountHtmxLifecycle } ] = await Promise.all([
-        import('htmx.org'),
-        import('./mountHtmxLifecycle'),
-    ]);
-
+    const htmx = (await import('htmx.org')).default;
+    
     window.htmx = htmx;
 
     mountHtmxLifecycle();

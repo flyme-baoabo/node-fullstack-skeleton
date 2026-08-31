@@ -55,7 +55,7 @@ export function serveStaticSpa(): (req: Request, res: Response, next: NextFuncti
  */
 function spaFallback(req: Request, res: Response, next: NextFunction): void {
     if (!isSpaFallbackCandidate(req)) {
-        logger.debug('[spa-fallback] skip: not a candidate', { method: req.method, path: req.path });
+        logger.info('[spa-fallback] skip: not a candidate', { method: req.method, path: req.path });
         return next();
     }
     logger.info('[spa-fallback] HIT: send index.html', { path: req.path });
