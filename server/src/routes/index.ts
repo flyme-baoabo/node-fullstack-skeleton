@@ -1,6 +1,6 @@
-import { pagesRouter } from '../routes/pages.js';
-import { localeRouter } from '../routes/locale.js';
-import { listRouter } from '../routes/list.js';
+import { pagesRouter } from './pages.js';
+import { localeRouter } from './locale.js';
+import { listRouter } from './list.js';
 import type { Express } from 'express';
 import { notFoundHandler, errorHandler } from '../middleware/error.middleware.js';
 
