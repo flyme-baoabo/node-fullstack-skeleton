@@ -1,6 +1,7 @@
 import { showToast, ToastVariant } from '../components/toast';
 import { t } from './i18n';
 import { PAGE_PREFIX, API_PREFIX } from '../constants/api';
+import { ROOT_SELECTOR } from '../constants/dom';
 
 /**
  * 自定义语言切换下拉菜单（归属 i18n 内聚目录）。
@@ -140,7 +141,7 @@ async function switchLanguage(lang: string): Promise<void> {
     //    PAGE_PREFIX 的 key 带前缀，故这里拼上再 encodeURIComponent。
     const path = encodeURIComponent(`${PAGE_PREFIX}${location.pathname}`);
     await htmx.ajax('get', `${PAGE_PREFIX}/body?path=${path}`, {
-        target: '#root',
+        target: ROOT_SELECTOR,
         swap: 'innerHTML', // 整个 #root 替换
     });
 

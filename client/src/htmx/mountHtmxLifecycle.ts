@@ -3,6 +3,7 @@ import { showToast, ToastVariant } from '../components/toast';
 import { t } from '../i18n/i18n';
 import { initLanguageSwitcher } from '../i18n/language';
 import { logger } from '../utils/logger';
+import { ROOT_ID } from '../constants/dom';
 /**
  * HTMX 2.x 完整生命周期事件（权威定稿·生产无坑全覆盖）
  * 对齐官方源码 + 生产踩坑修正 + 全特殊状态码规则 + 422专属特例
@@ -205,7 +206,7 @@ export function mountHtmxLifecycle(): void {
     document.body.addEventListener('htmx:afterSwap', (event: Event) => {
         const detail = (event as CustomEvent).detail as { elt: HTMLElement; target: HTMLElement };
         void detail.elt;
-        if (detail.target?.id === 'root') {
+        if (detail.target?.id === ROOT_ID) {
             initLanguageSwitcher();
         }
     });

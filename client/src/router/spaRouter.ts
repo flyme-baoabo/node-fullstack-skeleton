@@ -1,4 +1,5 @@
 import { PAGE_PREFIX } from '../constants/api';
+import { ROOT_SELECTOR } from '../constants/dom';
 import { isValidPath } from './routes';
 import { showToast, ToastVariant } from '../components/toast';
 
@@ -10,8 +11,6 @@ import { showToast, ToastVariant } from '../components/toast';
  * @param htmx 已加载的 htmx 实例
  */
 export function setupSpaRouter(htmx: HTMX): void {
-    const ROOT_SELECTOR = '#root';
-
     // 导航序号：每次导航自增；响应回来时 navId ≠ navSeq 即过期导航，丢弃（防旧响应覆盖新页面）
     let navSeq = 0;
 
@@ -42,8 +41,8 @@ export function setupSpaRouter(htmx: HTMX): void {
                 target: ROOT_SELECTOR,
             });
             if (navId !== navSeq) return; // 已被更新的导航取代 → 丢弃过期响应
+            // swap 进来的内容 htmx 已在自身 settle 阶段自动 process，无需手动 htmx.process（冗余）
             console.log('[router] htmx.ajax get', `${PAGE_PREFIX}${path}`, res);
-            htmx.process(document.querySelector<HTMLElement>(ROOT_SELECTOR)!);
         } catch (err) {
             // 主动 abort / 过期导航属正常取消，静默；真网络失败才打日志 + toast
             if (navId !== navSeq) return;
@@ -59,6 +58,11 @@ export function setupSpaRouter(htmx: HTMX): void {
     /** SPA 导航统一入口：pushState 更新地址栏。真正的加载由下方 patch 的 pushState 统一处理 */
     function navigate(urlOrPath: string) {
         const target = new URL(urlOrPath, window.location.origin);
+        // 防御：外部域名不进 SPA 路由（否则 getPath 会剥掉 origin，静默导航到外域路径）
+        if (target.origin !== window.location.origin) {
+            window.location.href = target.href; //外部链接直接原生跳转
+            return;
+        };
         const nextPath = getPath(target);
         const currentPath = getPath(new URL(window.location.href));
         if (nextPath === currentPath) return; // 同路径不重复加载
@@ -103,9 +107,12 @@ export function setupSpaRouter(htmx: HTMX): void {
             const currentPath = getPath(new URL(window.location.href));
             original.apply(this, args);
             const url = args[2] as string | null | undefined;
-            const nextPath = getPath(new URL(url ?? '', window.location.origin));
-            if (url && nextPath !== currentPath) {
-                loadPageByPath(nextPath);
+            // url 为 null/''：规范语义是「URL 不变」→ 未发生导航，不加载（非 bug）
+            if (url) {
+                const nextPath = getPath(new URL(url, window.location.origin));
+                if (nextPath !== currentPath) {
+                    loadPageByPath(nextPath);
+                }
             }
         };
     };
