@@ -9,7 +9,7 @@ import { logger } from '../utils/logger';
  *  * 【全局强制前置规范】
  * 1. 所有请求头、URL、请求参数动态修改，仅可在 configRequest 执行
  * 2. beforeRequest 阶段修改网络配置不生效，禁止在此处修改请求配置
- * 
+ *
  * 【状态码核心固定规则】
  * 1. 204 NoContent / 304 NotModified：成功响应、无报错、跳过全套Swap渲染链路，直达afterRequest
  * 2. 4xx/5xx：默认触发responseError、禁止DOM Swap
@@ -18,39 +18,41 @@ import { logger } from '../utils/logger';
  * htmx:confirm                         👉 请求生命周期第一层钩子，hx-confirm弹窗确认阶段
  *                                      👉 可通过event.preventDefault()终止整条请求，后续所有事件不执行
  *                                      👉 用途：自定义确认弹窗、权限预检、请求前置拦截、黑名单拦截
- *         
+ *
  * htmx:configRequest                   👉 XHR初始化、参数编码完成，正式发包前的配置阶段
  *                                      👉 【唯一合法钩子】动态修改请求头、URL、Query/Body参数、注入Token
  *                                      👉 支持取消请求，阻断后续链路
- * 
+ *
  * htmx:beforeRequest                   👉 请求配置完全就绪，即将发起网络IO
  *                                      👉 最佳用途：开启Loading、添加inert、锁定按钮/表单交互状态
  *                                      👉 可取消请求，终止发包
  *                                      👉 禁止修改请求配置（此处修改不生效）
- * 
- * htmx:beforeSend                      👉 XHR open执行完毕，即将执行xhr.send()最终时刻 
+ *
+ * htmx:beforeSend                      👉 XHR open执行完毕，即将执行xhr.send()最终时刻
  *                                      👉 无法取消请求，请求已进入浏览器发送队列
  *                                      👉 用途：操作原生XHR实例、网络层最终只读配置
- * 
- * htmx:sendError                       👉 纯网络层异常：断网、DNS失败、CORS跨域、请求超时、手动abort
+ *
+ * htmx:sendError                       👉 纯网络层异常：断网、DNS失败、CORS跨域、请求超时
  *                                      👉 固定链路：confirm → configRequest → beforeRequest → beforeSend → sendError → afterRequest
  *                                      👉 跳过所有DOM Swap渲染逻辑
- * 
+ *
  * htmx:beforeSwap                      👉 【2.0.10 时序铁律】所有含HTTP响应的请求(2xx/4xx/5xx，排除204/304)优先进入此钩子
  *                                      👉 4xx/5xx 不会直接报错，先进 beforeSwap，通过 isError/shouldSwap 决定后续所有分支
  *                                      👉 可手动修改 isError 拦截后续 responseError 事件，彻底自定义错误链路
- * 
+ *
  * htmx:responseError                   👉 后置错误分支！仅 beforeSwap 执行完毕 && isError===true 才触发
  *                                      👉 网络通信正常，服务端返回4xx/5xx HTTP错误码
  *                                      👉 固定正确时序：beforeSend → beforeSwap → responseError → afterRequest
  *                                      👉 204/304成功状态永不触发此事件
  *                                      👉 422放行后设置 isError=false，天然不触发此事件，无需手动过滤
- *                                     
+ *
  * htmx:swapError/htmx:afterSwap        👉 (afterSwap)DOM 替换完成(立刻触发，临时class还没清理)
  *      swapError                       👉 DOM 替换失败 不走  afterSwap、afterSettle，直接跳到 afterRequest**
  *      afterSwap                       👉 DOM 刚插入完成立即触发；带htmx‑added/htmx‑settling临时class；适合focus、简单初始化
- * 
+ *
  * htmx:afterSettle                     👉 默认延时20ms；属性同步、清理临时CSS类，DOM布局与动画稳定后触发；读取元素尺寸、滚动逻辑放此处
+ *
+ * htmx:sendAbort                       👉 请求被主动中止（手动 abort），无响应体可显示, 后面的时间声明周期只会走到 afterRequest
  * 
  * htmx:afterRequest                    👉 请求生命周期终点，【无论成功失败必触发】；loading关闭、统一收尾写这里
  *  * 状态码特殊行为：
@@ -65,14 +67,19 @@ import { logger } from '../utils/logger';
  * 4. 正常渲染成功：confirm → configRequest → beforeRequest → beforeSend → beforeSwap → afterSwap → afterSettle → afterRequest
  * 5. 渲染异常失败：confirm → configRequest → beforeRequest → beforeSend → beforeSwap → swapError → afterRequest
  *  特性链路
- * 6. 422属于4xx，默认走【链路2】不渲染；可在 beforeSwap 手动配置 shouldSwap=true、isError=false 强制开启渲染。 
+ * 6. 422属于4xx，默认走【链路2】不渲染；可在 beforeSwap 手动配置 shouldSwap=true、isError=false 强制开启渲染。
  *    confirm → configRequest → beforeRequest → beforeSend → beforeSwap(手动放行) → responseError(依旧触发) → afterSwap → afterSettle → afterRequest
  *     isError true 的话，走完 responseError 直接是 afterRequest ，但是 dom 正常 wrap 除非发生 swapError 对把
- * 
+ *
  */
 
+/**
+ * 挂载 htmx 生命周期事件处理器。
+ * 仅在入口（main.ts bootstrap）显式调用一次；所有监听用 document/body 委托，
+ * 兼容动态渲染的内容（htmx swap 进的新 DOM 无需重挂）。
+ */
 export function mountHtmxLifecycle(): void {
-    /** htmx:confirm 拦截已提取到 confirm.ts 的 handleConfirm（单一职责，这里只负责注册）。 */
+    /** htmx:confirm 拦截已提取到 components/confirm 的 handleConfirm（单一职责，这里只负责注册）。 */
     document.addEventListener('htmx:confirm', handleConfirm);
 
     /** configRequest 阶段：唯一合法钩子，用于注入动态请求头、URL、Query/Body 参数与 Token。 */
@@ -132,7 +139,7 @@ export function mountHtmxLifecycle(): void {
         void detail;
     });
 
-    /** sendError 阶段：纯网络层异常（断网 / 超时 / CORS / 被拦截 / 手动 abort），无响应体可显示。 */
+    /** sendError 阶段：纯网络层异常（断网 / 超时 / CORS / 被拦截），无响应体可显示。 */
     document.body.addEventListener('htmx:sendError', (event: Event) => {
         const detail = (event as CustomEvent).detail as {
             xhr: XMLHttpRequest;
@@ -198,6 +205,12 @@ export function mountHtmxLifecycle(): void {
 
     /** afterSettle 阶段：默认延时 20ms 后触发，布局与动画稳定。读取尺寸、滚动定位放此处。 */
     document.body.addEventListener('htmx:afterSettle', (event: Event) => {
+        const detail = (event as CustomEvent).detail as { elt: HTMLElement };
+        void detail;
+    });
+
+    /** 手动 abort 会进入 htmx:sendAbort 阶段 */
+    document.body.addEventListener('htmx:sendAbort', (event: Event) => {
         const detail = (event as CustomEvent).detail as { elt: HTMLElement };
         void detail;
     });
