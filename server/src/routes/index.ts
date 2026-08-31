@@ -1,8 +1,8 @@
-import { pagesRouter } from './routes/pages.js';
-import { localeRouter } from './routes/locale.js';
-import { listRouter } from './routes/list.js';
+import { pagesRouter } from '../routes/pages.js';
+import { localeRouter } from '../routes/locale.js';
+import { listRouter } from '../routes/list.js';
 import type { Express } from 'express';
-import { notFoundHandler, errorHandler } from './middleware/error.middleware.js';
+import { notFoundHandler, errorHandler } from '../middleware/error.middleware.js';
 
 /**
  * 挂载业务路由到 app（全局路由装配入口，测试端与生产端都经由 mountRoutes）。
