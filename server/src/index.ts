@@ -1,8 +1,7 @@
 import dotenv from 'dotenv';
 import http from 'node:http';
-import express from 'express';
 import { createApp } from './app.js';
-import { mountRoutes } from './routes.js';
+import { mountRoutes } from './routes/index.js';
 import { serveStaticSpa } from './middleware/staticSpa.middleware.js';
 import { registerShutdown } from './runtime/shutdownRuntime.js';
 import { installProcessErrorGuard } from './runtime/processErrors.js';
