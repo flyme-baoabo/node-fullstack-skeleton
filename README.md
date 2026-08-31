@@ -11,6 +11,18 @@
 > 提示：spa 分支为开发基线，A、B两条技术路线均从spa分支切出迭代；可独立演进，互不强制耦合，可按需选择性合并特性。
 > 本仓库开启GitHub Template模板能力，`Use this template` 默认使用 main 分支生成全新项目。
 
+## 技术研究衍生仓库（Use this template 创建独立仓库）
+基于本模板仓库，可衍生两套独立的技术研究路线，**建议通过 GitHub `Use this template` 生成全新独立仓库进行实验，不在模板主仓库内迭代研究特性**。
+
+- 📦 **后端能力深度演进仓库**：`node‑fullstack‑skeleton‑backend`
+  研究内容：扩展后端持久化存储能力，完善账号体系与完整业务模型；完成后端服务框架迁移，实践对比不同服务框架的中间件设计范式。
+
+- 📦 **前端构建链路自研仓库**：`node‑fullstack‑skeleton‑build`
+  研究内容：替换现有前端构建工具，从零实现一套前端构建流水线；保留现有交互能力与SPA客户端路由；继续沿用本地文件存储方案，不引入外部存储服务。
+
+> 操作：打开模板仓库，点击 `Use this template` 创建对应新仓库；新仓库默认分支为 `main`，全部研究迭代在新仓库内部完成。
+
+
 前后端分离小型项目：前端持有静态壳（`client/index.html`）与 **SPA 路由**，**htmx** 做局部交互；后端 **Express** 只提供 `/page/*`（页面片段）与 `/api/*` 接口；**Vite + Tailwind CSS** 负责前端构建与 HMR（开发双端口，生产由 Express 托管 `dist-client`）。
 
 > 💡 开发/提交/版本同步规范请看 [**docs/development-standards.md**](docs/development-standards.md)（GitHub 为主仓库、Gitee 为镜像的同步约定）。
