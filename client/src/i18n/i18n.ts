@@ -1,8 +1,8 @@
 /**
  * 客户端 i18n 取词条工具。
  * 词条定义在服务端（server/src/locales/*.json），纯 SPA 下：
- *  - 首屏由 main.ts 调 GET /api/i18n 拉取 → window.I18n；
- *  - 切换语言由 language.ts 调 POST /api/change-language 更新 window.I18n。
+ *  - 首屏由入口 bootstrap 调 i18n/language.ts 的 initLanguagePack() 拉取 → window.I18n；
+ *  - 切换语言由 i18n/language.ts 调 POST /api/change-language 更新 window.I18n。
  * 本函数根据点号 key（如 "toast.network_error"）从该对象取值，
  * 支持 {{var}} 插值，找不到时回退返回 key 本身。
  */

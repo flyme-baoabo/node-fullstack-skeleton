@@ -22,44 +22,87 @@
 ## 目录结构
 
 ```
-project-root/                       # 当前仓库根目录（占位名，取决于 clone 目录名）
-├─ server/                          # Node 后端业务
-│  └─ src/
-│     ├─ adapter/                   # 基础设施适配层（把外部能力接入业务）
-│     ├─ controller/                # HTTP 控制器
-│     ├─ service/                   # 业务服务层
-│     ├─ repository/                # 纯业务数据 CRUD 封装（本地 JSON 文件读写）
-│     │  └─ todo.repository.ts      #   待办数据读 / 写 / 查，暂用 data/todos.json，无 Prisma 底层基建
-│     ├─ db/                        # 后端数据库底层基建目录
-│     │  ├─ prisma/                 # Prisma 专属目录
-│     │  │  ├─ schema.prisma        #   数据表模型、关联关系、数据库数据源配置
-│     │  │  └─ migrations/          #   数据库版本迁移脚本集合
-│     │  ├─ index.ts                # 数据库主实例初始化、连接池统一管理
-│     │  ├─ redis.ts                # Redis 底层连接与配置
-│     │  └─ db.config.ts            # 数据库全局参数配置
-│     ├─ dto/                       # 数据传输对象
-│     ├─ routes/                    # 业务路由
-│     ├─ utils/                     # 通用工具
-│     ├─ views/                     # 服务端视图模板层
-│     │  ├─ layouts/                #   global 布局骨架
-│     │  ├─ pages/                  #   业务页面模板
-│     │  └─ partials/               #   公共片段组件
-│     └─ …其余既有文件（app.ts / index.ts / i18n / middleware / runtime / locales…）
-├─ client/                          # 前端源码：html / Sass / TS / 组件
+project-root/                           # 当前仓库根目录（占位名，取决于 clone 目录名）
+├─ server/                           # Node 后端业务
 │  ├─ src/
-│  └─ public/
-├─ dist-client/                     # Vite 构建产物，供 server 读取
-├─ dist-server/                     # TSC 编译产物，服务端生产运行目录
-├─ Dockerfile                       # 后端服务镜像构建文件（仅用于后端部署）
-├─ vite.config.ts                   # 全局 Vite 构建配置（前后端不分离共用）
-├─ tsconfig.json                    # 全局 TS 基础配置（前后端共用）
-├─ tsconfig.server.json             # 服务端 TS 独立编译配置
-├─ scripts/
-│  └─ build-server.mjs              # 服务端编译后置处理脚本（拷贝 .ejs/.json 等静态资源）
-├─ .env                             # 本地环境变量（已 gitignore，不入库）
-├─ .env.example                     # 环境变量模板
-├─ docker-compose.yml               # 全局容器编排（仅中间件）
-└─ package.json
+│  │  ├─ adapter/                    # 基础设施适配层（把外部能力接入业务）
+│  │  │  └─ webCtx.ts               #   WebContext 标准化请求/响应上下文（controller 只依赖它）
+│  │  ├─ controller/                 # HTTP 控制器（业务错误在此 throw HttpError）
+│  │  │  ├─ todo.controller.ts        #   待办：API + 局部片段 + 整页
+│  │  │  ├─ page.controller.ts        #   页面渲染与重绘（/page/body）
+│  │  │  └─ locale.controller.ts      #   语言切换（/api/change-language）
+│  │  ├─ service/                    # 业务服务层
+│  │  │  └─ todo.service.ts
+│  │  ├─ repository/                 # 纯业务数据 CRUD 封装（读写 data/todos.json）
+│  │  │  └─ todo.repository.ts
+│  │  ├─ db/                         # 后端数据库底层基建目录（预留骨架，未接入）
+│  │  │  ├─ prisma/                 # Prisma 专属目录
+│  │  │  │  ├─ schema.prisma         #   数据表模型、关联关系、数据源配置
+│  │  │  │  └─ migrations/           #   版本迁移脚本集合
+│  │  │  ├─ index.ts                # 数据库主实例初始化、连接池统一管理
+│  │  │  ├─ redis.ts                # Redis 底层连接与配置
+│  │  │  └─ db.config.ts            # 数据库全局参数配置
+│  │  ├─ dto/                        # 数据传输对象
+│  │  │  └─ todo.dto.ts
+│  │  ├─ i18n/                      # i18next 核心配置
+│  │  │  ├─ config.ts               #   i18next 初始化与语言检测配置
+│  │  │  ├─ error-codes.ts          #   错误码词典（HttpError 反查 message / status）
+│  │  │  └─ locales.ts              #   语言包加载
+│  │  ├─ locales/                   # 语言包 JSON 资源
+│  │  │  ├─ en-US.json
+│  │  │  └─ zh-CN.json
+│  │  ├─ middleware/                  # Express 中间件
+│  │  │  ├─ requestId.middleware.ts   #   requestId 生成 + X-Request-Id 回写
+│  │  │  ├─ i18n.middleware.ts        #   语言解析与 res.locals 桥接（t / currentLocale）
+│  │  │  ├─ render.middleware.ts      #   res.renderPage 多层布局组装
+│  │  │  ├─ fragment.middleware.ts    #   htmx 标记注入 / res.render 片段重写 / /partials 防直访
+│  │  │  ├─ staticSpa.middleware.ts   #   托管构建产物静态资源
+│  │  │  └─ error.middleware.ts       #   统一错误出口（HttpError 映射）
+│  │  ├─ routes/                     # 业务路由（list.ts / locale.ts / pages.ts）
+│  │  ├─ runtime/                    # 进程级运行时
+│  │  │  ├─ processErrors.ts        #   unhandledRejection / uncaughtException 兜底
+│  │  │  └─ shutdownRuntime.ts      #   注册退场逻辑到进程信号（SIGTERM / SIGINT）
+│  │  ├─ types/                      # 类型定义
+│  │  │  └─ render.ts
+│  │  ├─ utils/                     # 通用工具
+│  │  │  ├─ logger.ts               #   零依赖 JSON 结构化日志
+│  │  │  ├─ asyncHandler.ts         #   async 路由错误转运（.catch(next)）
+│  │  │  ├─ gracefulShutdown.ts     #   退场：关闭 HTTP 监听与 socket
+│  │  │  └─ listenWithRetry.ts      #   入场：EADDRINUSE 时重试监听端口
+│  │  ├─ legacy/                      # 旧实现留存（render-fragment.ts / render-page.ts）
+│  │  ├─ views/                      # 服务端视图模板层（EJS）
+│  │  │  ├─ layouts/                #   app-layout.ejs 全局布局骨架
+│  │  │  ├─ pages/                  #   业务页面（index.ejs / listPage.ejs）
+│  │  │  └─ partials/               #   公共片段（item.ejs / list.ejs）
+│  │  └─ 根文件：app.ts / index.ts / constants.ts / paths.ts / routes.ts / views.ts / express.d.ts
+│  └─ data/todos.json                # 待办数据持久化文件
+├─ client/                           # 前端源码：html / Sass / TS / 组件
+│  ├─ index.html                     # Vite SPA 入口壳（提供 html/head 全局壳）
+│  ├─ vite.config.ts                 # Vite 构建 / 代理配置（读 vite.constants.ts / vite.utils.ts）
+│  ├─ vite.constants.ts / vite.utils.ts
+│  ├─ public/                        # Vite 静态资源（favicon.ico 等）
+│  └─ src/
+├─ data/                             # 本地持久化数据（已 gitignore，不入库）
+│  └─ todos.json
+├─ test/                             # 测试
+│  └─ routes/home.test.ts
+├─ docs/                             # 文档
+│  ├─ development-standards.md / docker.md / ci-cd-yunxiao.md
+│  └─ knowledge/                     # 知识点备忘
+├─ scripts/                          # Node 构建/开发脚本（.js，兼顾 Windows）
+│  ├─ build-client.js               # 仅构建前端产物
+│  ├─ build-server.js               # 编译后端 + 拷贝 .ejs/.json 等静态资源
+│  ├─ dev-client.js                 # 读 .env → 等后端端口 → 拉 Vite
+│  └─ vite-utils.js
+├─ dist/                             # 构建产物目录（dist-client/ dist-server/，已 gitignore）
+├─ Dockerfile                        # 后端服务镜像构建文件（ARG MODE 控制调试构建）
+├─ docker-compose.yml                # 全局容器编排（仅中间件）
+├─ docker-compose.develop.yml / docker-compose.local.yml / docker-compose.test.yml
+├─ tsconfig.base.json                # 全局 TS 基础配置（前后端共用）
+├─ tsconfig.json / tsconfig.server.json
+├─ package.json
+├─ .env(.example / .development)     # 环境变量（已 gitignore，不入库）
+└─ CI/CD 相关目录（.github / .gitee / .yunxiao / .workflow）
 ```
 
 > 💡 **数据库目录说明**：`server/src/db/`（含 `prisma/`、`index.ts`、`redis.ts`、`db.config.ts`）目前是**预留的基础模板骨架**，尚未接入真实数据库。当前待办数据仍走 JSON 文件存储（`repository/todo.repository.ts` 读写 `data/todos.json`）；上述骨架不导入任何业务代码、不进入启动链路，`typecheck` 零副作用，待接入 PostgreSQL / Redis 时按配置内注释填充即可。
@@ -119,7 +162,7 @@ npm run build:all        # 前后端一起构建（build:server && build:client�
 npm test                 # 运行测试
 ```
 
-> `npm run dev` 由 `concurrently -k` 并发拉起两个进程；其中 `dev:client` 用 `scripts/dev-client.mjs`（而非 shell 变量，兼顾 Windows）加载 `.env` 并轮询等待后端端口就绪，因此**严格先起 server 再起 client**。开发时浏览器访问 **http://localhost:${VITE_PORT}**；Express 由 `node --watch-path=server` 在文件变更时自行重启，Vite 由自己的 dev server 做前端热更。
+> `npm run dev` 由 `concurrently -k` 并发拉起两个进程；其中 `dev:client` 用 `scripts/dev-client.js`（而非 shell 变量，兼顾 Windows）加载 `.env` 并轮询等待后端端口就绪，因此**严格先起 server 再起 client**。开发时浏览器访问 **http://localhost:${VITE_PORT}**；Express 由 `node --watch-path=server` 在文件变更时自行重启，Vite 由自己的 dev server 做前端热更。
 ### Docker 构建时动态注入 mode
 
 镜像里若要走调试构建（带 sourcemap），通过 `Dockerfile` 的 `ARG MODE` 在 build 时注入（默认 `production`）：

@@ -1,5 +1,4 @@
-import { PAGE_PREFIX } from './constants';
-
+import { PAGE_PREFIX } from '../constants/api';
 
 /**
  * 轻量 SPA 路由：把 `#root` 内容换成 Express 的 `${PAGE_PREFIX}/path` fragment。
@@ -7,12 +6,13 @@ import { PAGE_PREFIX } from './constants';
  *  1. 初始加载当前路径
  *  2. 点击同源 `<a>` → pushState → 加载对应页面（SPA 导航）
  *  3. 浏览器前进/后退（popstate）→ 加载对应页面
+ *
+ * 不再自带 DOMContentLoaded 副作用：由入口（main.ts bootstrap）在
+ * 拿到 htmx 实例后显式调用 setupSpaRouter()，逻辑与挂载生命周期解耦。
+ *
+ * @param htmx 已加载的 htmx 实例（bootstrap 里 import('htmx.org') 后传入）
  */
-window.addEventListener('DOMContentLoaded', async () => {
-    const htmx = window.htmx = (await import('htmx.org')).default;
-    await import('./mountHtmxLifecycle');
-    console.log('[router] htmx loaded', htmx);
-
+export function setupSpaRouter(htmx: typeof import('htmx.org').default): void {
     const ROOT_SELECTOR = '#root';
 
     async function loadPageByPath(path: string = window.location.pathname) {
@@ -87,4 +87,4 @@ window.addEventListener('DOMContentLoaded', async () => {
     // ===== 初始加载 + 前进/后退 =====
     loadPageByPath();
     window.addEventListener('popstate', () => loadPageByPath());
-});
+}

@@ -1,12 +1,12 @@
+import { loadTemplate } from '../templates/templates';
+
 /**
- * 全局 Toast 提示 —— 纯 UI 模块。
+ * 全局 Toast 提示 —— 纯 UI 组件。
  *
  * 只负责：showToast 弹出提示 + 自动消失 + ✕ 手动关闭。
- * 触发时机由 mountHtmxLifecycle.ts 决定（4xx/5xx、网络错误等）。
- * 骨架按需从 templates.ts 加载，克隆后注入到 <div id="toast-slot">（fixed 定位）。
+ * 触发时机由 router/mountHtmxLifecycle.ts 决定（4xx/5xx、网络错误等）。
+ * 骨架按需从 templates/templates.ts 加载，克隆后注入到 <div id="toast-slot">（fixed 定位）。
  */
-
-import { loadTemplate } from './templates';
 
 /** toast 变体（错误 / 一般提示）：导出常量 + 派生类型，供外部复用 */
 export const ToastVariant = {

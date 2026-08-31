@@ -1,5 +1,5 @@
 /**
- * 前端模板按需加载模块。
+ * 前端模板按需加载模块（与 templates/*.html 就近内聚）。
  *
  * 模板以独立 .html 文件维护在 client/src/templates/。加载时不再预制任何 <template>，
  * 由业务方通过 loadTemplate(id) 按需取用：
@@ -25,7 +25,7 @@ const rawTemplates = import.meta.glob('./templates/*.html', {
 }) as Record<string, () => Promise<string>>;
 
 /** 已注册 <template> 缓存，避免重复查 DOM */
-const registry = new Map<string, HTMLTemplateElement>();
+const registered = new Map<string, HTMLTemplateElement>();
 
 /**
  * 按需加载模板：确保该 id 对应的 <template> 已注册到 body 并返回它。
@@ -33,8 +33,8 @@ const registry = new Map<string, HTMLTemplateElement>();
  * @param id 模板 DOM id，如 'toast-template' / 'confirm-template'
  */
 export async function loadTemplate(id: TemplateId): Promise<HTMLTemplateElement> {
-    // 已注册则直接复用（先缓存、再回退 DOM 查询）
-    const existing = registry.get(id) ?? document.getElementById(id);
+    // 已注册则直接返回（先缓存、再回退 DOM 查询）
+    const existing = registered.get(id) ?? document.getElementById(id);
     if (existing instanceof HTMLTemplateElement) return existing;
 
     const file = TEMPLATE_FILE_BY_ID[id];
@@ -47,11 +47,11 @@ export async function loadTemplate(id: TemplateId): Promise<HTMLTemplateElement>
     tpl.innerHTML = html;
 
     document.body.appendChild(tpl);
-    registry.set(id, tpl);
+    registered.set(id, tpl);
     return tpl;
 }
 
 /** 读取已注册模板，未注册时返回 null（同步场景用） */
 export function getRegisteredTemplate(id: TemplateId): HTMLTemplateElement | null {
-    return registry.get(id) ?? null;
+    return registered.get(id) ?? null;
 }
