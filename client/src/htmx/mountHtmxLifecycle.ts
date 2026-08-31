@@ -33,7 +33,7 @@ import { logger } from '../utils/logger';
  *                                      👉 无法取消请求，请求已进入浏览器发送队列
  *                                      👉 用途：操作原生XHR实例、网络层最终只读配置
  *
- * htmx:sendError                       👉 纯网络层异常：断网、DNS失败、CORS跨域、请求超时、手动abort
+ * htmx:sendError                       👉 纯网络层异常：断网、DNS失败、CORS跨域、请求超时
  *                                      👉 固定链路：confirm → configRequest → beforeRequest → beforeSend → sendError → afterRequest
  *                                      👉 跳过所有DOM Swap渲染逻辑
  *
@@ -53,6 +53,8 @@ import { logger } from '../utils/logger';
  *
  * htmx:afterSettle                     👉 默认延时20ms；属性同步、清理临时CSS类，DOM布局与动画稳定后触发；读取元素尺寸、滚动逻辑放此处
  *
+ * htmx:sendAbort                       👉 请求被主动中止（手动 abort），无响应体可显示, 后面的时间声明周期只会走到 afterRequest
+ * 
  * htmx:afterRequest                    👉 请求生命周期终点，【无论成功失败必触发】；loading关闭、统一收尾写这里
  *  * 状态码特殊行为：
  *  204 NoContent / 304 NotModified：成功响应，不触发responseError，直接跳过整套Swap事件，走到afterRequest
@@ -138,7 +140,7 @@ export function mountHtmxLifecycle(): void {
         void detail;
     });
 
-    /** sendError 阶段：纯网络层异常（断网 / 超时 / CORS / 被拦截 / 手动 abort），无响应体可显示。 */
+    /** sendError 阶段：纯网络层异常（断网 / 超时 / CORS / 被拦截），无响应体可显示。 */
     document.body.addEventListener('htmx:sendError', (event: Event) => {
         const detail = (event as CustomEvent).detail as {
             xhr: XMLHttpRequest;
@@ -210,6 +212,12 @@ export function mountHtmxLifecycle(): void {
 
     /** afterSettle 阶段：默认延时 20ms 后触发，布局与动画稳定。读取尺寸、滚动定位放此处。 */
     document.body.addEventListener('htmx:afterSettle', (event: Event) => {
+        const detail = (event as CustomEvent).detail as { elt: HTMLElement };
+        void detail;
+    });
+
+    /** 手动 abort 会进入 htmx:sendAbort 阶段 */
+    document.body.addEventListener('htmx:sendAbort', (event: Event) => {
         const detail = (event as CustomEvent).detail as { elt: HTMLElement };
         void detail;
     });
