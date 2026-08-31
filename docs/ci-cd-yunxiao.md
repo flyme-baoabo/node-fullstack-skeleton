@@ -12,13 +12,13 @@
 | 源码源 | Gitee（`type: git` 通用 Git 源 + Gitee 服务连接） |
 | 构建镜像+推送 | `DockerBuildPushACR`（云效内置步骤，专用于 ACR） |
 | 目标 ACR | `crpi-1vp5deeta128cxtu.cn-beijing.personal.cr.aliyuncs.com/my-app-flyme/node-fullstack-skeleton` |
-| 本地验证镜像 | `docker-compose.yml` + `-f docker-compose-test.yml`（.env 配 `TEST_IMAGE_NAME` 拉取验证） |
+| 本地验证镜像 | `docker-compose.yml` + `-f docker-compose.test.yml`（.env 配 `TEST_IMAGE_NAME` 拉取验证） |
 | 部署 | 暂无 ECS/K8s，`kubectl_apply_stage` 已注释 |
 
 ## 运行状态
 
 - ✅ **2026-08-28**:`DockerBuildPushACR` 步骤运行成功 —— **镜像构建 + 推送 ACR 已打通**，证明云效链路可行。
-- ✅ **2026-08-28**:**本地拉取验证也走通** —— 用 `docker-compose.yml` + `-f docker-compose-test.yml`（.env 配 `TEST_IMAGE_NAME`）在本地把已 push 的镜像整套拉起来，确认镜像可落地运行。至此「**构建 → 推送 ACR → 本地验证**」闭环完成，只剩部署阶段。
+- ✅ **2026-08-28**:**本地拉取验证也走通** —— 用 `docker-compose.yml` + `-f docker-compose.test.yml`（.env 配 `TEST_IMAGE_NAME`）在本地把已 push 的镜像整套拉起来，确认镜像可落地运行。至此「**构建 → 推送 ACR → 本地验证**」闭环完成，只剩部署阶段。
 - 推送确认完成后，可在 ACR 控制台该镜像仓库的「镜像版本」里看到对应 tag 的镜像。
 
 ## 为什么放弃 Gitee Go 的镜像推送
