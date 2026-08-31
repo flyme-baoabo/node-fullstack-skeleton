@@ -49,7 +49,7 @@ project-root/                       # 当前仓库根目录（占位名，取决
 │  │  │  ├─ pages/                  #   业务页面模板
 │  │  │  └─ partials/               #   公共片段组件
 │  │  ├─ legacy/                    # 旧版渲染脚本（保留对照）
-│  │  └─ …其余既有文件（app.ts / index.ts / routes.ts / paths.ts / types/…）
+│  │  └─ …其余既有文件（app.ts / index.ts / paths.ts / types/…）
 │  └─ data/                         # 服务端本地数据（todos.json，运行期读写）
 ├─ client/                          # 前端源码：html / Sass / TS / 组件
 │  ├─ src/
