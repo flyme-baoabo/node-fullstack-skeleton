@@ -1,4 +1,15 @@
 # node‑fullstack-skeleton
+> 📌 **模板仓库说明**
+本仓库为基础模板仓库。
+- `spa`：内部开发迭代分支，由 master → develop 迭代而来，增加前端SPA客户端路由能力。所有新特性、技术路线A/B均在此分支上开发迭代。
+- `main`：**对外模板发布分支**，基于 spa 创建，作为 GitHub Template 的实际基线；spa 的稳定变更会合并同步至 main，新项目通过模板能力基于 main 生成。
+
+后续衍生两条并行技术演进路线：
+- **路线A**：数据库与框架演进：接入PostgreSQL + Redis实现完整CRUD、账号注册/登录/登出；后续进一步将后端框架从Express替换为Koa2，体验洋葱圈中间件模型，对比两个Web框架设计差异。
+- **路线B**：构建工具演进：移除Vite，基于原生node脚本 + esbuild自研构建流水线，掌握底层打包逻辑。
+
+> 提示：spa 分支为开发基线，A、B两条技术路线均从spa分支切出迭代；可独立演进，互不强制耦合，可按需选择性合并特性。
+> 本仓库开启GitHub Template模板能力，`Use this template` 默认使用 main 分支生成全新项目。
 
 前后端分离小型项目：前端持有静态壳（`client/index.html`）与 **SPA 路由**，**htmx** 做局部交互；后端 **Express** 只提供 `/page/*`（页面片段）与 `/api/*` 接口；**Vite + Tailwind CSS** 负责前端构建与 HMR（开发双端口，生产由 Express 托管 `dist-client`）。
 
