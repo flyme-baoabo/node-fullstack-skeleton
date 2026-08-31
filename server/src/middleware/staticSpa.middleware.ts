@@ -36,10 +36,10 @@ export function serveStaticSpa(): (req: Request, res: Response, next: NextFuncti
     const staticMiddleware = express.static(clientDistDir);
 
     return (req, res, next) => {
-        // 先尝试静态文件。注意 static 的完成回调分两种「没命中」：
-        //   - 真错误（权限 EACCES、非法路径等）→ next(err)，err 有值；
-        //   - 只是「没找到文件」(404，如 /list) → 回调不带参，err 为 undefined。
-        // 因此只有真错误才走 if(err)；一切普通 miss（含 /list 这类深链）都会落进 spaFallback。
+        // 先尝试静态文件。static 未命中时回调分两种：
+        //   - 真错误（如权限）→ next(err)，err 有值，交给错误链；
+        //   - 只是没找到文件（404，如 /list）→ 回调不带参，才轮到 spaFallback。
+        // ⚠️ static 一旦命中真实文件并返回，就【不会】再调用回调（响应已发送，headersSent 必为 false）。
         staticMiddleware(req, res, (err?: unknown) => {
             if (err) {
                 return next(err); // static 抛错（如权限）交给错误链
@@ -66,12 +66,6 @@ function spaFallback(req: Request, res: Response, next: NextFunction): void {
     if (path.extname(p)) {
         logger.info('[spa-fallback] bail: has extname', { path: p });
         return next();
-    }
-    // 响应已被 static 命中（如根路径 / 走 index 自动补 index.html）→ 已经返回过了，
-    // 这里直接结束、不要再 sendFile（也不 next()，否则 404 handler 会对已发送响应再写入而炸）。
-    if (res.headersSent) {
-        logger.info('[spa-fallback] bail: headers already sent', { path: p });
-        return;
     }
     logger.info('[spa-fallback] HIT: send index.html', { path: p });
     res.sendFile(path.join(clientDistDir, 'index.html'));
