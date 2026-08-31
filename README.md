@@ -1,19 +1,19 @@
-# node-fullstack-skeleton
+# node‑fullstack-skeleton
 
-前后端不分离小型项目：**Node + Express** 服务端渲染，**htmx** 提供前端交互能力，**Vite + Tailwind CSS** 负责前端构建与 HMR。
+前后端分离小型项目：前端持有静态壳（`client/index.html`）与 **SPA 路由**，**htmx** 做局部交互；后端 **Express** 只提供 `/page/*`（页面片段）与 `/api/*` 接口；**Vite + Tailwind CSS** 负责前端构建与 HMR（开发双端口，生产由 Express 托管 `dist-client`）。
 
 > 💡 开发/提交/版本同步规范请看 [**docs/development-standards.md**](docs/development-standards.md)（GitHub 为主仓库、Gitee 为镜像的同步约定）。
 >
 > 💡 Docker 镜像构建 / 本地启停 / 日常运维命令请看 [**docs/docker.md**](docs/docker.md)。
 
-本工程是 **Express + Vite** 的实践项目，完整串起「后端 Express 渲染视图 + 前端 Vite 构建/HMR」的典型开发链路。
+本工程是 **Express + Vite** 的实践项目，完整串起「后端 Express 出片段/接口 + 前端 Vite 壳/构建/HMR」的前后端分离开发链路。
 
 ## 技术栈选型
 
 | 层 | 选型 | 说明 |
 |---|---|---|
-| 后端框架 | Express 5 | 服务端渲染 API，返回完整页面或局部片段 |
-| 模板引擎 | EJS | 应用外壳 `app-layout.ejs` + partial / page 拆分 |
+| 后端框架 | Express 5 | 纯后端服务：`/page/*` 页面片段 + `/api/*` 接口 |
+| 模板引擎 | EJS | 片段外壳 `app-layout.ejs`（注入前端 `#root`）+ partial / page 拆分 |
 | 前端交互 | htmx 2 | 通过 `hx-*` 属性做局部交换 |
 | 样式 | Tailwind CSS | utility-first，按需生成，和模板类名兼容 |
 | 构建 / HMR | Vite 8 | 双端口 dev server；Vite 提供 SPA shell、模块 transform 与 HMR |
