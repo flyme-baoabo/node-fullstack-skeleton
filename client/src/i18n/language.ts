@@ -1,4 +1,4 @@
-import { showToast, ToastVariant } from './toast';
+import { showToast, ToastVariant } from '../components/toast';
 import { t } from './i18n';
 
 /**

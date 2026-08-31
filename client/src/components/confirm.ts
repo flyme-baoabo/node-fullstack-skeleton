@@ -1,4 +1,4 @@
-import { t } from './i18n';
+import { escapeHtml } from '../utils/escapeHtml';
 
 /**
  * 确认弹窗 + htmx:confirm 拦截模块。
@@ -6,7 +6,7 @@ import { t } from './i18n';
  * 只负责：
  *  - openConfirm：打开确认弹窗，resolve(true/false)
  *  - handleConfirm：htmx:confirm 事件处理器（带 data-confirm 就弹框拦截，确认后放行请求）
- *  - closeModal / escapeHtml：内部工具
+ *  - closeModal：内部工具
  * 拦截由 mountHtmxLifecycle.ts 触发注册（document 上委托监听，兼容动态渲染按钮）。
  */
 
@@ -102,18 +102,6 @@ function closeModal(): void {
     const old = document.getElementById('confirm-overlay');
     if (old) old.remove();
     modalRoot = null;
-}
-
-/** 转义 HTML，避免待办文本把弹窗结构搞乱（防注入） */
-function escapeHtml(str?: string, defaultKey?: string): string {
-    if (!str) {
-        return defaultKey ? escapeHtml(t(defaultKey)) : '';
-    }
-    return str.replace(
-        /[&<>"']/g,
-        (c) =>
-            ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] ?? c,
-    );
 }
 /**
  * htmx:confirm 拦截处理器：带 data-confirm 的操作弹出确认框。
