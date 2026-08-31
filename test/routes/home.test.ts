@@ -19,6 +19,20 @@ describe('GET /', () => {
     });
 });
 
+describe('GET /api/__routes', () => {
+    it('返回合法路径清单（由 PAGE_META 派生，不含 /page 前缀）', async () => {
+        const res = await request(await buildApp()).get('/api/__routes');
+        assert.equal(res.status, 200);
+        const body = res.body as { valid: string[]; base: string };
+        assert.ok(Array.isArray(body.valid), 'valid 应为数组');
+        assert.ok(body.valid.includes('/'), '应含基路径 /');
+        assert.ok(body.valid.includes('/list'), '应含 /list');
+        // 派生清单不应带 /page 前缀（那是内部注册路径，非浏览器可见）
+        assert.ok(!body.valid.some((p) => p.startsWith('/page')));
+        assert.equal(body.base, '/');
+    });
+});
+
 describe('GET /list', () => {
     it('返回待办清单页（含表单 + #todo-list）', async () => {
         const res = await request(await buildApp()).get('/list');

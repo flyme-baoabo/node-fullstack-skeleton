@@ -197,17 +197,17 @@ export function mountHtmxLifecycle(): void {
         showToast(t('toast.swap_failed'), ToastVariant.Error);
     });
 
-   /**
-    * afterSwap 阶段：DOM 刚插入完成（带 htmx-added/htmx-settling 临时 class）。
-    * 适合做 focus、简单初始化。
-    * 路由/语言切换会用 AJAX 整块替换 DOM，故这里对语言菜单做幂等重绑（INITIALIZED 守卫防重）。
-   */
+    /**
+     * afterSwap 阶段：DOM 刚插入完成（临时 class 未清理），适合 focus、简单初始化。
+     * 语言菜单位于 app-layout，仅整页替换（target 为 #root）才重绑；
+     * 局部碎片替换（#list/<li> 等）不波及菜单，跳过。
+     */
     document.body.addEventListener('htmx:afterSwap', (event: Event) => {
-        const detail = (event as CustomEvent).detail as { elt: HTMLElement };
-        void detail;
-        // 页面级路由跳转（hx-boost 会用 AJAX 替换整个 body，原先挂在 #root 内的语言菜单会被换成新 DOM）。
-        // 监听 htmx:afterSwap（任何 swap 完成后触发，含 boost 的 body 替换），对新 DOM 重新绑定。
-        initLanguageSwitcher();
+        const detail = (event as CustomEvent).detail as { elt: HTMLElement; target: HTMLElement };
+        void detail.elt;
+        if (detail.target?.id === 'root') {
+            initLanguageSwitcher();
+        }
     });
 
     /** afterSettle 阶段：默认延时 20ms 后触发，布局与动画稳定。读取尺寸、滚动定位放此处。 */

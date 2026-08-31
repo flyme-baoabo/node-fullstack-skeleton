@@ -49,24 +49,35 @@ export function serveStaticSpa(): (req: Request, res: Response, next: NextFuncti
     };
 }
 
-/** SPA 深链兜底：仅导航类 GET 且非后端前缀、非静态资源时，回送 index.html。 */
+/**
+ * SPA 深链兜底：static 未命中时，若请求具备深链资格（内部用 isSpaFallbackCandidate 判定），
+ * 回送 index.html 让前端 SPA 路由器接管；否则放行给后续路由/404。
+ */
 function spaFallback(req: Request, res: Response, next: NextFunction): void {
-    logger.info('[spa-fallback] enter', { method: req.method, path: req.path });
-    if (req.method !== 'GET') {
-        logger.info('[spa-fallback] bail: non-GET', { method: req.method, path: req.path });
+    if (!isSpaFallbackCandidate(req)) {
+        logger.debug('[spa-fallback] skip: not a candidate', { method: req.method, path: req.path });
         return next();
+    }
+    logger.info('[spa-fallback] HIT: send index.html', { path: req.path });
+    res.sendFile(path.join(clientDistDir, 'index.html'));
+}
+
+/** 内部判定 util：该请求是否可能是 SPA 深链（导航类 GET + 非后端前缀 + 非静态资源）。 */
+function isSpaFallbackCandidate(req: Request): boolean {
+    if (req.method !== 'GET') {
+        logger.debug('[spa-fallback] skip: non-GET', { method: req.method, path: req.path });
+        return false;
     }
     const p = req.path;
     // 后端 handle 的路径放行，交给 mountRoutes 的路由（/api、/page）
-    if (p.startsWith(API_PREFIX) || p.startsWith(PAGE_PREFIX)) {
-        logger.info('[spa-fallback] bail: backend prefix', { path: p });
-        return next();
+    if ([API_PREFIX, PAGE_PREFIX].some((prefix) => p.startsWith(prefix))) {
+        logger.debug('[spa-fallback] skip: backend prefix', { path: p });
+        return false;
     }
-    // 带扩展名 = 静态资源，static 已 404，这里不接管
+    // 带扩展名 = 静态资源请求，static 没找到就该 404，不该被吞成 index.html
     if (path.extname(p)) {
-        logger.info('[spa-fallback] bail: has extname', { path: p });
-        return next();
+        logger.debug('[spa-fallback] skip: has extname', { path: p });
+        return false;
     }
-    logger.info('[spa-fallback] HIT: send index.html', { path: p });
-    res.sendFile(path.join(clientDistDir, 'index.html'));
+    return true;
 }

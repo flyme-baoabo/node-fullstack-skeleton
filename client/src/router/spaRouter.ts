@@ -1,28 +1,55 @@
 import { PAGE_PREFIX } from '../constants/api';
 import { isValidPath } from './routes';
+import { showToast, ToastVariant } from '../components/toast';
 
 /**
- * 轻量 SPA 路由：把 `#root` 内容换成 Express 的 `${PAGE_PREFIX}/path` fragment。
- * 职责：
- *  1. 初始加载当前路径
- *  2. 点击同源 `<a>` → pushState → 加载对应页面（SPA 导航）
- *  3. 浏览器前进/后退（popstate）→ 加载对应页面
+ * 轻量 SPA 路由：把 `#root` 内容换成 `${PAGE_PREFIX}/path` fragment。
+ * 三类入口（首屏 / 内链点击 pushState / 前进后退 popstate）统一汇入 loadPageByPath。
+ * 无自带副作用：由 bootstrap 在拿到 htmx 实例后显式调用。
  *
- * 不再自带 DOMContentLoaded 副作用：由入口（main.ts bootstrap）在
- * 拿到 htmx 实例后显式调用 setupSpaRouter()，逻辑与挂载生命周期解耦。
- *
- * @param htmx 已加载的 htmx 实例（bootstrap 里 import('htmx.org') 后传入）
+ * @param htmx 已加载的 htmx 实例
  */
 export function setupSpaRouter(htmx: HTMX): void {
     const ROOT_SELECTOR = '#root';
 
+    // 导航序号：每次导航自增；响应回来时 navId ≠ navSeq 即过期导航，丢弃（防旧响应覆盖新页面）
+    let navSeq = 0;
+
     async function loadPageByPath(path: string = window.location.pathname) {
-        const res = await htmx.ajax('get', `${PAGE_PREFIX}${path}`, {
-            swap: 'innerHTML',
-            target: ROOT_SELECTOR,
-        });
-        console.log('[router] htmx.ajax get', `${PAGE_PREFIX}${path}`, res);
-        htmx.process(document.querySelector<HTMLElement>(ROOT_SELECTOR)!);
+        // ===== 路由守卫：非法路径 → replaceState 重定向到根路径（保留 search+hash）=====
+        // replaceState 会走进下方补丁并自动再触发一次 loadPageByPath，故这里直接 return 避免重复加载。
+        // 【边界】若 fallback 本身也非法（manifest 缺失等）会形成重定向死循环，当前 fallback 恒合法。
+        if (!isValidPath(path)) {
+            const fallback = `/${window.location.search}${window.location.hash}`;
+            console.warn('[router] 非法路径，重定向到', path, '→', fallback);
+            history.replaceState({}, '', fallback);
+            // 这行调用会走进下面 patch 后的 replaceState：它检测到 fallback 是合法路径
+            // 且 ≠ 当前路径，会自动再触发一次 loadPageByPath(fallback) 来加载首页。
+            // 这里直接 return，避免守卫自己再加载一次造成重复请求。
+            return;
+        }
+
+        // abort 在途请求（htmx.ajax 未传 source，xhr 挂在 body 上，故 detail.elt 必须指向 body，
+        // 否则 htmx 内部 abort 监听读 null.elt 抛 TypeError）；无在途请求时静默。
+        const navId = ++navSeq;
+        document.body.dispatchEvent(
+            new CustomEvent('htmx:abort', { detail: { elt: document.body } }),
+        );
+
+        try {
+            const res = await htmx.ajax('get', `${PAGE_PREFIX}${path}`, {
+                swap: 'innerHTML',
+                target: ROOT_SELECTOR,
+            });
+            if (navId !== navSeq) return; // 已被更新的导航取代 → 丢弃过期响应
+            console.log('[router] htmx.ajax get', `${PAGE_PREFIX}${path}`, res);
+            htmx.process(document.querySelector<HTMLElement>(ROOT_SELECTOR)!);
+        } catch (err) {
+            // 主动 abort / 过期导航属正常取消，静默；真网络失败才打日志 + toast
+            if (navId !== navSeq) return;
+            console.error('[router] 页面加载失败', `${PAGE_PREFIX}${path}`, err);
+            void showToast('页面加载失败，请稍后重试', ToastVariant.Error);
+        }
     }
 
     const getPath = (target: URL) => {

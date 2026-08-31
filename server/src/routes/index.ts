@@ -1,6 +1,7 @@
 import { pagesRouter } from './pages.js';
 import { localeRouter } from './locale.js';
 import { listRouter } from './list.js';
+import { routesManifestRouter } from './routes-manifest.js';
 import type { Express } from 'express';
 import { notFoundHandler, errorHandler } from '../middleware/error.middleware.js';
 
@@ -17,7 +18,8 @@ export function mountRoutes(app: Express): void {
     app.use('/', pagesRouter);
     app.use('/', localeRouter);
     app.use('/', listRouter);
-
+    app.use('/', routesManifestRouter);
+    
     // 兜底：所有未命中路由的请求 → 404
     app.use(notFoundHandler);
     // 全局错误：Express 渲染/controller 抛错 → 状态码响应（须放在所有路由与 notFound 之后）

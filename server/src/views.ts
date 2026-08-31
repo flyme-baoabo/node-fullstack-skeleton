@@ -21,6 +21,8 @@ export const PAGE_META: Record<string, PageMeta> = {
     [LIST_PATH]: { view: 'pages/listPage', title: '待办清单 - htmx Study' },
 };
 
+export const CLIENT_PATHS = Object.keys(PAGE_META).map(path => toClientPath(path));
+
 /** 按 path 取页面元信息；未知 path 兜底到首页。 */
 export function metaForPath(path: unknown): PageMeta {
     const _path = String(path || INDEX_PATH);
