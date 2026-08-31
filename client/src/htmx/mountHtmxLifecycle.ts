@@ -1,6 +1,7 @@
 import { handleConfirm } from '../components/confirm';
 import { showToast, ToastVariant } from '../components/toast';
 import { t } from '../i18n/i18n';
+import { initLanguageSwitcher } from '../i18n/language';
 import { logger } from '../utils/logger';
 /**
  * HTMX 2.x 完整生命周期事件（权威定稿·生产无坑全覆盖）
@@ -194,6 +195,9 @@ export function mountHtmxLifecycle(): void {
     document.body.addEventListener('htmx:afterSwap', (event: Event) => {
         const detail = (event as CustomEvent).detail as { elt: HTMLElement };
         void detail;
+        // 页面级路由跳转（hx-boost 会用 AJAX 替换整个 body，原先挂在 #root 内的语言菜单会被换成新 DOM）。
+        // 监听 htmx:afterSwap（任何 swap 完成后触发，含 boost 的 body 替换），对新 DOM 重新绑定。
+        initLanguageSwitcher();
     });
 
     /** afterSettle 阶段：默认延时 20ms 后触发，布局与动画稳定。读取尺寸、滚动定位放此处。 */

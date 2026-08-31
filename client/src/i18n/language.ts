@@ -15,7 +15,7 @@ const INITIALIZED = new WeakSet<HTMLElement>();
 // WeakSet 没有 size / 迭代器，无法直接查长度，故用一个计数器统计「真正登记过的容器总数」。
 // 注意：这是历史累计值（旧容器被 swap 移除后会 GC，但计数不回退），只看增长趋势，不代表内存占用。
 
-function initLanguageSwitcher(): void {
+export function initLanguageSwitcher(): void {
     document.querySelectorAll<HTMLElement>(CONTAINER_SELECTOR).forEach((container) => {
         if (INITIALIZED.has(container)) return; // 已在首次绑定过的容器，跳过（避免重复绑定）
 
@@ -129,13 +129,3 @@ async function switchLanguage(lang: string): Promise<void> {
     // 5. 整个切换流程完成后再弹成功 toast（此时文案用新语言，DOM 已换新）
     showToast(t('toast.change_language_success'), ToastVariant.Success);
 }
-
-// 首次加载：绑定语言菜单。
-initLanguageSwitcher();
-
-// 页面级路由跳转（hx-boost 会用 AJAX 替换整个 body，原先挂在 #root 内的语言菜单会被换成新 DOM）。
-// 监听 htmx:afterSwap（任何 swap 完成后触发，含 boost 的 body 替换），对新 DOM 重新绑定。
-// 由于每个容器用 INITIALIZED 守卫防重，重复触发这里的 init 是安全的（已绑的容器会被跳过）。
-document.body.addEventListener('htmx:afterSwap', () => {
-    initLanguageSwitcher();
-});
