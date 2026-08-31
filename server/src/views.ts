@@ -16,10 +16,9 @@ export interface PageMeta {
 const INDEX_PATH = `${PAGE_PREFIX}`; // 首页 /page/ 或 /page
 const LIST_PATH = `${PAGE_PREFIX}/list`; // 待办清单页 /page/list
 
-// const
 export const PAGE_META: Record<string, PageMeta> = {
-    '/': { view: 'pages/index', title: 'htmx Study' },
-    '/list': { view: 'pages/listPage', title: '待办清单 - htmx Study' },
+    [INDEX_PATH]: { view: 'pages/index', title: 'htmx Study' },
+    [LIST_PATH]: { view: 'pages/listPage', title: '待办清单 - htmx Study' },
 };
 
 /** 按 path 取页面元信息；未知 path 兜底到首页。 */
