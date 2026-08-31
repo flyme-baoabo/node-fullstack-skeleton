@@ -19,7 +19,7 @@ const TEMPLATE_FILE_BY_ID = {
 export type TemplateId = keyof typeof TEMPLATE_FILE_BY_ID;
 
 /** Vite 惰性 glob：path → () => Promise<原始 HTML 字符串>，按需 import（非 eager） */
-const rawTemplates = import.meta.glob('./templates/*.html', {
+const rawTemplates = import.meta.glob('./*.html', {
     query: '?raw',
     import: 'default',
 }) as Record<string, () => Promise<string>>;
@@ -38,7 +38,7 @@ export async function loadTemplate(id: TemplateId): Promise<HTMLTemplateElement>
     if (existing instanceof HTMLTemplateElement) return existing;
 
     const file = TEMPLATE_FILE_BY_ID[id];
-    const load = rawTemplates[`./templates/${file}`];
+    const load = rawTemplates[`./${file}`];
     if (!load) throw new Error(`Unknown template: "${id}"`);
 
     const html = await load();
