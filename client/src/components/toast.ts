@@ -1,3 +1,4 @@
+import { escapeHtml } from '../utils/escapeHtml';
 import { loadTemplate } from '../templates/templates';
 
 /**
@@ -52,7 +53,7 @@ export async function showToast(
     if (!toast) return;
 
     const msg = toast.querySelector<HTMLElement>('[data-toast-msg]');
-    if (msg) msg.textContent = message;
+    if (msg) msg.textContent = escapeHtml(message);
 
     toast.setAttribute('role', variant === 'error' ? 'alert' : 'status');
     toast.classList.add(...VARIANT_CLASSES[variant].split(' '));

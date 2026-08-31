@@ -90,6 +90,8 @@ export async function openConfirm(
         root
             .querySelector<HTMLButtonElement>('[data-action="cancel"]')!
             .addEventListener('click', () => resolveAndClose(false));
+
+        // 点击遮罩(100vw×100vh 的 mask)不关闭弹窗，只能通过"取消"按钮或 Esc 关闭
         // Esc 关闭
         const onKey = (e: KeyboardEvent) => {
             if (e.key === 'Escape') resolveAndClose(false);
