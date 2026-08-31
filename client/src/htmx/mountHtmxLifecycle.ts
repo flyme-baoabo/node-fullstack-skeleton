@@ -198,7 +198,7 @@ export function mountHtmxLifecycle(): void {
     });
 
     /** afterSwap 阶段：DOM 刚插入完成（带 htmx-added/htmx-settling 临时 class）。
-     * 适合做 focus、简单初始化。 */
+     * 适合做 focus、简单初始化。 以及对新 DOM 进行必要的绑定。 */
     document.body.addEventListener('htmx:afterSwap', (event: Event) => {
         const detail = (event as CustomEvent).detail as { elt: HTMLElement };
         void detail;
