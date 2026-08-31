@@ -10,11 +10,11 @@
  *
  * 依赖：先有 window.htmx，才能初始化路由。
  */
-import { initLanguagePack, initLanguageSwitcher } from './i18n/language';
-import { initHtmx } from './htmx/htmx';
-import { setupSpaRouter } from './router/spaRouter';
-
 async function bootstrap(): Promise<void> {
+    const { initLanguagePack, initLanguageSwitcher } = await import('./i18n/language');
+    const { initHtmx } = await import('./htmx/htmx');
+    const { setupSpaRouter } = await import('./router/spaRouter');
+
     initLanguageSwitcher();
     await initLanguagePack();
 

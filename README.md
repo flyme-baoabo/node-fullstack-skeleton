@@ -82,6 +82,30 @@ project-root/                           # 当前仓库根目录（占位名，�
 │  ├─ vite.constants.ts / vite.utils.ts
 │  ├─ public/                        # Vite 静态资源（favicon.ico 等）
 │  └─ src/
+│     ├─ main.ts                     # 前端入口（样式 + bootstrap 装配）
+│     ├─ bootstrap.ts               # 启动装配：串行加载各模块并按依赖顺序执行
+│     ├─ index.d.ts                 # 全局类型声明（window.I18n / window.htmx / StringMap）
+│     ├─ components/                # UI 组件（同步函数 + 异步模板加载）
+│     │  ├─ confirm.ts             #   确认弹窗 + htmx:confirm 拦截（openConfirm / handleConfirm）
+│     │  └─ toast.ts               #   全局 Toast 提示（showToast）
+│     ├─ constants/                 # 常量
+│     │  └─ api.ts                 #   PAGE_PREFIX('/page') / API_PREFIX('/api')
+│     ├─ htmx/                      # htmx 装配与生命周期
+│     │  ├─ htmx.ts                #   initHtmx：加载 htmx.org → window.htmx + 挂载生命周期
+│     │  └─ mountHtmxLifecycle.ts  #   全生命周期事件订阅（confirm/4xx/网络错误/422 等）
+│     ├─ i18n/                      # 国际化（前端取词 / 语言切换）
+│     │  ├─ i18n.ts                #   从 window.I18n 取词条 t()（支持 {{var}} 插值）
+│     │  └─ language.ts            #   语言菜单 initLanguageSwitcher / 拉语言包 initLanguagePack
+│     ├─ router/                    # SPA 路由
+│     │  └─ spaRouter.ts           #   setupSpaRouter：a 拦截 + pushState 补丁 + 首屏加载
+│     ├─ templates/                 # 模板按需加载 + 独立 html 模板
+│     │  ├─ templates.ts           #   loadTemplate（Vite import.meta.glob 惰性拆包）
+│     │  ├─ confirm.html
+│     │  └─ toast.html
+│     ├─ utils/                     # 通用工具
+│     │  ├─ logger.ts              #   前端日志工具
+│     │  └─ escapeHtml.ts          #   HTML 转义（防 XSS 注入，支持 i18n 兜底）
+│     └─ main.scss / tailwind.css   # 样式入口
 ├─ data/                             # 本地持久化数据（已 gitignore，不入库）
 │  └─ todos.json
 ├─ test/                             # 测试

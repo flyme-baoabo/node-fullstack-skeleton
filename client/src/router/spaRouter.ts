@@ -1,3 +1,4 @@
+import { HtmxAjaxEtc } from 'htmx.org';
 import { PAGE_PREFIX } from '../constants/api';
 
 /**
@@ -12,7 +13,7 @@ import { PAGE_PREFIX } from '../constants/api';
  *
  * @param htmx 已加载的 htmx 实例（bootstrap 里 import('htmx.org') 后传入）
  */
-export function setupSpaRouter(htmx: typeof import('htmx.org').default): void {
+export function setupSpaRouter(htmx: HTMX): void {
     const ROOT_SELECTOR = '#root';
 
     async function loadPageByPath(path: string = window.location.pathname) {

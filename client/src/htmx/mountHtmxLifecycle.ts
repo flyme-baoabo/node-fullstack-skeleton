@@ -223,6 +223,3 @@ export function mountHtmxLifecycle(): void {
         void detail;
     });
 }
-
-
-mountHtmxLifecycle();
