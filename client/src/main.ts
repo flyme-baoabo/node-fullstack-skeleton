@@ -1,6 +1,6 @@
 import htmx from 'htmx.org';
 import './tailwind.css';
 import './main.scss';
-import './language';
-import './mountHtmxLifecycle';
+import './i18n/language';
+import './htmx/mountHtmxLifecycle';
 window.htmx = htmx;

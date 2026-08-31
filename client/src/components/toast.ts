@@ -1,3 +1,5 @@
+import { escapeHtml } from '../utils/escapeHtml';
+
 /**
  * 全局 Toast 提示 —— 纯 UI 模块。
  *
@@ -19,6 +21,7 @@ const VARIANT_CLASSES: Record<ToastVariant, string> = {
     error: 'border-rose-200 bg-rose-50 text-rose-700',
     success: 'border-emerald-200 bg-emerald-50 text-emerald-700',
 };
+
 
 /** 自动消失延迟（ms） */
 const AUTO_DISMISS_MS = 5000;
@@ -51,7 +54,7 @@ export function showToast(
     if (!toast) return;
 
     const msg = toast.querySelector<HTMLElement>('[data-toast-msg]');
-    if (msg) msg.textContent = message;
+    if (msg) msg.textContent = escapeHtml(message);
 
     toast.setAttribute('role', variant === 'error' ? 'alert' : 'status');
     toast.classList.add(...VARIANT_CLASSES[variant].split(' '));
