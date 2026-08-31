@@ -195,10 +195,11 @@ export function mountHtmxLifecycle(): void {
         showToast(t('toast.swap_failed'), ToastVariant.Error);
     });
 
-    /** afterSwap 阶段：DOM 刚插入完成（带 htmx-added/htmx-settling 临时 class）。
-     * 适合做 focus、简单初始化。
-     *  路由/语言切换会用 AJAX 整块替换 DOM，故这里对语言菜单做幂等重绑（INITIALIZED 守卫防重）。 */
-    */
+   /**
+    * afterSwap 阶段：DOM 刚插入完成（带 htmx-added/htmx-settling 临时 class）。
+    * 适合做 focus、简单初始化。
+    * 路由/语言切换会用 AJAX 整块替换 DOM，故这里对语言菜单做幂等重绑（INITIALIZED 守卫防重）。
+   */
     document.body.addEventListener('htmx:afterSwap', (event: Event) => {
         const detail = (event as CustomEvent).detail as { elt: HTMLElement };
         void detail;
