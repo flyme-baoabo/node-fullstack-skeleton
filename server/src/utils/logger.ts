@@ -43,8 +43,33 @@ function localTs(): string {
     const zoneName = timeZonePart('zh-CN', 'long');                           // 中国标准时间
     return `${datePart} ${offset} (${zoneName})`;
 }
+const LOG_LEVELS = {
+    DEBUG: 'debug', // 调试级：用于排查细节（如被排除的请求），生产默认不输出。
+    INFO: 'info',  // 信息级：用于记录关键事件（如启动、请求、路由命中、数据库连接等）。
+    WARN: 'warn',  // 警告级：用于记录非致命异常（如请求参数错误、404、第三方服务异常等）。
+    ERROR: 'error', // 错误级：用于记录致命异常（如未捕获异常、数据库连接失败、服务崩溃等）。
+} as const;
+/** 日志级别定义：此处集中声明可用级别及优先级（越靠前越详细）。 */
+type LogLevel = typeof LOG_LEVELS[keyof typeof LOG_LEVELS];
 
-function write(level: string, method: string, msg: string, meta: LogMeta = {}): void {
+/** console 输出通道：warn/error 走 stderr，log（debug/info）走 stdout，便于按流筛选。 */
+const LOG_METHODS = {
+    LOG: 'log',   // stdout（debug / info）
+    WARN: 'warn', // stderr（warn）
+    ERROR: 'error', // stderr（error）
+} as const;
+type LogMethod = typeof LOG_METHODS[keyof typeof LOG_METHODS];
+
+/** 判断生产环境：仅产线需要排除 debug，其余环境全量输出。 */
+function isProduction(): boolean {
+    return process.env.NODE_ENV === 'production';
+}
+
+function write(level: LogLevel, method: LogMethod, msg: string, meta: LogMeta = {}): void {
+    // 生产环境只丢弃 debug（info/warn/error 照常）；其它环境不过滤，所有级别都打印。
+    if (level === LOG_LEVELS.DEBUG && isProduction()) {
+        return;
+    }
     const line = JSON.stringify({
         ts: new Date().toISOString(),
         tsLocal: localTs(),
@@ -52,15 +77,14 @@ function write(level: string, method: string, msg: string, meta: LogMeta = {}): 
         msg,
         ...meta,
     });
-    if (method === 'error' || method === 'warn') {
-        console[method](line);
-    } else {
-        console.log(line);
-    }
+    // method 本身就是 'log' | 'warn' | 'error'，直接按名调用即可（warn/error 落 stderr，log 落 stdout）。
+    console[method](line);
 }
 
 export const logger = {
-    info: (msg: string, meta: LogMeta = {}): void => write('info', 'log', msg, meta),
-    warn: (msg: string, meta: LogMeta = {}): void => write('warn', 'warn', msg, meta),
-    error: (msg: string, meta: LogMeta = {}): void => write('error', 'error', msg, meta),
+    /** 调试级日志：用于排查细节（如被排除的请求），生产默认不输出。 */
+    debug: (msg: string, meta: LogMeta = {}): void => write(LOG_LEVELS.DEBUG, LOG_METHODS.LOG, msg, meta),
+    info: (msg: string, meta: LogMeta = {}): void => write(LOG_LEVELS.INFO, LOG_METHODS.LOG, msg, meta),
+    warn: (msg: string, meta: LogMeta = {}): void => write(LOG_LEVELS.WARN, LOG_METHODS.WARN, msg, meta),
+    error: (msg: string, meta: LogMeta = {}): void => write(LOG_LEVELS.ERROR, LOG_METHODS.ERROR, msg, meta),
 };
