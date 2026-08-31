@@ -1,6 +1,6 @@
 import express from 'express';
 import * as todoController from '../controller/todo.controller.js';
-import { PAGE_PREFIX } from '../constants.js';
+import { PAGE_PREFIX } from '../constants/api.js';
 
 const router = express.Router();
 

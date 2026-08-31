@@ -1,7 +1,7 @@
 import express from 'express';
 import { getI18n, changeLanguage, renderBody } from '../controller/locale.controller.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
-import { PAGE_PREFIX, API_PREFIX } from '../constants.js';
+import { PAGE_PREFIX, API_PREFIX } from '../constants/api.js';
 
 const router = express.Router();
 

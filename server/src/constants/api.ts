@@ -1,5 +1,6 @@
 /**
  * 服务端路由前缀常量：定义 Express 对外暴露的页面路由前缀与 API 路由前缀。
+ * 与前端 client/src/constants/api.ts 保持同构，两侧前缀值需一致。
  *
  * 约定：
  *  - `PAGE_PREFIX` 用于页面/片段路由，如 `/page${path}`、`/page/body?path=...`

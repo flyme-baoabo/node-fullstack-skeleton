@@ -1,7 +1,8 @@
 import path from 'node:path';
 import express, { type Request, type Response, type NextFunction } from 'express';
 import { clientDistDir } from '../paths.js';
-import { API_PREFIX, PAGE_PREFIX } from '../constants.js';
+import { API_PREFIX, PAGE_PREFIX } from '../constants/api.js';
+import { logger } from '../utils/logger.js';
 
 /**
  * 静态托管 + SPA 深链兜底中间件（生产单端口专用）。
@@ -50,17 +51,28 @@ export function serveStaticSpa(): (req: Request, res: Response, next: NextFuncti
 
 /** SPA 深链兜底：仅导航类 GET 且非后端前缀、非静态资源时，回送 index.html。 */
 function spaFallback(req: Request, res: Response, next: NextFunction): void {
+    logger.info('[spa-fallback] enter', { method: req.method, path: req.path });
     if (req.method !== 'GET') {
+        logger.info('[spa-fallback] bail: non-GET', { method: req.method, path: req.path });
         return next();
     }
     const p = req.path;
     // 后端 handle 的路径放行，交给 mountRoutes 的路由（/api、/page）
     if (p.startsWith(API_PREFIX) || p.startsWith(PAGE_PREFIX)) {
+        logger.info('[spa-fallback] bail: backend prefix', { path: p });
         return next();
     }
     // 带扩展名 = 静态资源，static 已 404，这里不接管
     if (path.extname(p)) {
+        logger.info('[spa-fallback] bail: has extname', { path: p });
         return next();
     }
+    // 响应已被 static 命中（如根路径 / 走 index 自动补 index.html）→ 已经返回过了，
+    // 这里直接结束、不要再 sendFile（也不 next()，否则 404 handler 会对已发送响应再写入而炸）。
+    if (res.headersSent) {
+        logger.info('[spa-fallback] bail: headers already sent', { path: p });
+        return;
+    }
+    logger.info('[spa-fallback] HIT: send index.html', { path: p });
     res.sendFile(path.join(clientDistDir, 'index.html'));
 }

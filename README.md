@@ -27,6 +27,8 @@ project-root/                           # 当前仓库根目录（占位名，�
 │  ├─ src/
 │  │  ├─ adapter/                    # 基础设施适配层（把外部能力接入业务）
 │  │  │  └─ webCtx.ts               #   WebContext 标准化请求/响应上下文（controller 只依赖它）
+│  │  ├─ constants/                 # 常量
+│  │  │  ├─ api.ts                  #   PAGE_PREFIX('/page') / API_PREFIX('/api')
 │  │  ├─ controller/                 # HTTP 控制器（业务错误在此 throw HttpError）
 │  │  │  ├─ todo.controller.ts        #   待办：API + 局部片段 + 整页
 │  │  │  ├─ page.controller.ts        #   页面渲染与重绘（/page/body）
@@ -58,7 +60,7 @@ project-root/                           # 当前仓库根目录（占位名，�
 │  │  │  ├─ fragment.middleware.ts    #   htmx 标记注入 / res.render 片段重写 / /partials 防直访
 │  │  │  ├─ staticSpa.middleware.ts   #   托管构建产物静态资源
 │  │  │  └─ error.middleware.ts       #   统一错误出口（HttpError 映射）
-│  │  ├─ routes/                     # 业务路由（list.ts / locale.ts / pages.ts）
+│  │  ├─ routes/                     # 业务路由（list.ts / locale.ts / pages.ts）+ 业务路由装配
 │  │  ├─ runtime/                    # 进程级运行时
 │  │  │  ├─ processErrors.ts        #   unhandledRejection / uncaughtException 兜底
 │  │  │  └─ shutdownRuntime.ts      #   注册退场逻辑到进程信号（SIGTERM / SIGINT）
@@ -74,7 +76,7 @@ project-root/                           # 当前仓库根目录（占位名，�
 │  │  │  ├─ layouts/                #   app-layout.ejs 全局布局骨架
 │  │  │  ├─ pages/                  #   业务页面（index.ejs / listPage.ejs）
 │  │  │  └─ partials/               #   公共片段（item.ejs / list.ejs）
-│  │  └─ 根文件：app.ts / index.ts / constants.ts / paths.ts / routes.ts / views.ts / express.d.ts
+│  │  └─ 根文件：app.ts / index.ts / constants.ts / paths.ts / views.ts / express.d.ts
 │  └─ data/todos.json                # 待办数据持久化文件
 ├─ client/                           # 前端源码：html / Sass / TS / 组件
 │  ├─ index.html                     # Vite SPA 入口壳（提供 html/head 全局壳）
