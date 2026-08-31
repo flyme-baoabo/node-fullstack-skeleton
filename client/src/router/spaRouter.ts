@@ -1,5 +1,5 @@
-import { HtmxAjaxEtc } from 'htmx.org';
 import { PAGE_PREFIX } from '../constants/api';
+import { isValidPath } from './routes';
 
 /**
  * 轻量 SPA 路由：把 `#root` 内容换成 Express 的 `${PAGE_PREFIX}/path` fragment。
