@@ -10,15 +10,18 @@
             data-confirm-title="<%= done ? t('confirm.undo_title') : t('confirm.mark_title') %>"
             data-confirm-confirm="<%= done ? t('confirm.undo_btn') : t('confirm.mark_btn') %>"
             data-confirm-cancel="<%= t('confirm.cancel_btn') %>"
-            data-confirm-variant="info" hx-post="/page/todos/<%= id %>/toggle" hx-swap="outerHTML">
+            data-confirm-variant="info" 
+            hx-post="/page/todos/<%= id %>/toggle" hx-swap="outerHTML"
+            hx-indicator="#todo-list-region">
             <%= done ? '↩ ' + t('confirm.undo_btn') : '✓ ' + t('confirm.mark_btn') %>
         </button>
         <button class="btn-danger" data-confirm="<%= t('confirm.delete_msg') %>"
             data-confirm-title="<%= t('confirm.delete_title') %>"
             data-confirm-confirm="<%= t('confirm.delete_accept') %>"
-            hx-delete="/page/todos/<%= id %>" hx-swap="delete"
             data-confirm-cancel="<%= t('confirm.cancel_btn') %>"
-            data-confirm-variant="danger">
+            data-confirm-variant="danger"
+            hx-delete="/page/todos/<%= id %>" hx-swap="delete"
+            hx-indicator="#todo-list-region">
             ✕ <%= t('confirm.delete_btn') %>
         </button>
     </div>
