@@ -10,11 +10,6 @@ body {
     'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
 }
 
-/* 让带 hx-swap 的元素不跳闪（增强 htmx 交互观感） */
-.htmx-indicator {
-  display: none;
-}
-.htmx-request .htmx-indicator,
-.htmx-request.htmx-indicator {
-  display: inline-block;
+[data-disabled-by-htmx][disabled] {
+  cursor: not-allowed;
 }
